@@ -15,6 +15,7 @@ int main(int argc, char **argv)
     robot->run();
   };
 
+
   delete robot;
 
   return 0;
