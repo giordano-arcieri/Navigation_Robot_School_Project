@@ -1,5 +1,5 @@
-build/release/Navigation.o: Navigation.cpp \
- /usr/local/webots/include/controller/cpp/webots/Robot.hpp MyRobot.h \
+build/release/MyRobot.o: MyRobot.cpp MyRobot.h \
+ /usr/local/webots/include/controller/cpp/webots/Robot.hpp \
  /usr/local/webots/include/controller/cpp/webots/Motor.hpp \
  /usr/local/webots/include/controller/cpp/webots/Device.hpp \
  /usr/local/webots/include/controller/cpp/webots/../../c/webots/types.h \
