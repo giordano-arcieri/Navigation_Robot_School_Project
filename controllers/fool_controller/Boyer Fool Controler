@@ -1,0 +1,283 @@
+/**
+ * @file    MyRobot.h
+ * @brief   A simple example for computing the odometry while the robot moves straight
+ *
+ * @author  Juan José Gamboa Montero <jgamboa@ing.uc3m.es>
+ * @author  Jesús García Martínez <jesusgar@ing.uc3m.es>
+ * @date    2023-12
+ */
+
+#include "MyRobot.h"
+
+//////////////////////////////////////////////
+
+MyRobot::MyRobot() : Robot()
+{
+
+    // init default values
+    _time_step = 64;
+
+    _left_speed = 0;
+    _right_speed = 0;
+
+    _x = _y = _theta = 0.0; // robot pose variables 
+    _sr = _sl = 0.0; // displacement right and left wheels
+
+    _x_goal = 1.55, _y_goal = 0.25, _z_goal = 9.47;
+    
+    //recieve target angle in degrees relative to starting position
+    _theta_goal = (atan2((_y_goal - _y),(_x_goal - _x)) * 180 / M_PI) + 90; 
+    
+    // Motor Position Sensor initialization
+    _left_wheel_sensor = getPositionSensor("left wheel sensor");
+    _right_wheel_sensor = getPositionSensor("right wheel sensor");
+
+    _left_wheel_sensor->enable(_time_step);
+    _right_wheel_sensor->enable(_time_step);   
+
+
+    // Get robot's GPS; initialize it  
+    _my_gps = getGPS("global"); 
+    _my_gps->enable(_time_step);
+    
+    // Get robot's compass; initialize it 
+    _my_compass = getCompass("compass");
+    _my_compass->enable(_time_step);
+
+    // Motor initialization
+    _left_wheel_motor = getMotor("left wheel motor");
+    _right_wheel_motor = getMotor("right wheel motor");
+
+    // Set motor position to 0 to re-initialize the encoder measurement
+    _right_wheel_motor->setPosition(0.0);
+    _left_wheel_motor->setPosition(0.0); 
+
+    // Set motor position to infinity to allow velocity control
+    _right_wheel_motor->setPosition(INFINITY); 
+    _left_wheel_motor->setPosition(INFINITY);
+
+    // Set motor velocity to 0
+    _right_wheel_motor->setVelocity(0.0);
+    _left_wheel_motor->setVelocity(0.0);
+
+    // get distance sensor array and enable each one 
+    
+    //Ds1 is front left
+    _distance_sensor[0] = getDistanceSensor("ds1"); 
+    _distance_sensor[0]->enable(_time_step); 
+    
+    //Ds14 is front right
+    _distance_sensor[1] = getDistanceSensor("ds14"); 
+    _distance_sensor[1]->enable(_time_step); 
+    
+    //Ds12 is far right sensor
+    _distance_sensor[2] = getDistanceSensor("ds12"); 
+    _distance_sensor[2]->enable(_time_step);
+    
+    //Ds3 is far left sensor
+    _distance_sensor[3] = getDistanceSensor("ds3"); 
+    _distance_sensor[3]->enable(_time_step);
+}
+
+//////////////////////////////////////////////
+
+MyRobot::~MyRobot()
+{
+    // Stop motors
+    _left_wheel_motor->setVelocity(0.0);
+    _right_wheel_motor->setVelocity(0.0);
+    
+    // Disable robot's sensors
+    _my_compass->disable();
+    _left_wheel_sensor->disable();
+    _right_wheel_sensor->disable();
+}
+
+//////////////////////////////////////////////
+// Controller main logic 
+void MyRobot::run()
+{
+    cout << "Goal --> x: " << _x_goal << endl;
+    cout << "Goal --> y: " << _y_goal << endl;
+    cout << "Goal --> Theta: " << _theta_goal << endl;
+
+    _left_speed = MAX_SPEED;
+    _right_speed = MAX_SPEED;
+
+    // set the motor speeds
+    _left_wheel_motor->setVelocity(_left_speed);
+    _right_wheel_motor->setVelocity(_right_speed);
+    
+    while (step(_time_step) != -1) 
+    {
+        double front_left = _distance_sensor[0]->getValue();
+        double front_right = _distance_sensor[1]->getValue();
+        double side_right = _distance_sensor[2]->getValue();
+        double side_left = _distance_sensor[3]->getValue();
+        
+        float _x =_my_gps->getValues()[0]; 
+        float _y =_my_gps->getValues()[1];
+        float _z =_my_gps->getValues()[2];
+        
+        cout << "Front left: " << front_left << " Front right: " << front_right << 
+        " Left side: " << side_left << " Right side: " << side_right << endl;
+        
+        cout << "Left encoder: " << this->_left_wheel_sensor->getValue() << endl;
+        cout << "Right encoder: " << _right_wheel_sensor->getValue() << endl;
+         
+        cout<< "X: " << _x << endl;
+        cout<< "Y: " << _y << endl;
+        cout<< "Z: " << _z << endl;
+        _theta = convert_bearing_to_degrees();
+        
+        if (front_left < 200 && front_right < 200) {
+            cout << "Moving forward" << endl;
+            //forward();
+            //angle_drive(_theta_goal,_theta);
+            }
+        else if (front_right >= 200) {
+            cout << "Turning left" << endl;
+            left_turn();
+            }
+        else if (front_left >= 200) {
+            cout << "Turning right" << endl;
+            right_turn();
+            }
+       
+        _left_wheel_motor->setVelocity(_left_speed);
+        _right_wheel_motor->setVelocity(_right_speed);
+       
+        this->compute_odometry(); 
+        this->print_odometry();
+        if(this->goal_reached()) break;
+
+    }
+}
+
+//////////////////////////////////////////////
+void MyRobot::compute_odometry()
+{
+  float b = WHEELS_DISTANCE;
+  float dif_sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue()) - _sl;
+  float dif_sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue()) - _sr;
+  
+  _x = _x + (((dif_sr + dif_sl) / 2) * cos(_theta + ((dif_sr - dif_sl) / (2 * b))));
+  _y = _y + (((dif_sr + dif_sl) / 2) * sin(_theta + ((dif_sr - dif_sl) / (2 * b))));
+  
+  _sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue());
+  _sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue());
+  
+}        
+//////////////////////////////////////////////
+
+double MyRobot::convert_bearing_to_degrees()
+{
+    const double *in_vector = _my_compass->getValues();
+    
+    double rad = atan2(in_vector[0], in_vector[2]);
+    double deg = (rad * (180.0 / M_PI)) + 180;
+
+    return deg;
+}
+//////////////////////////////////////////////
+
+float MyRobot::encoder_tics_to_meters(float tics)
+{
+    return tics/ENCODER_TICS_PER_RADIAN * WHEEL_RADIUS;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::print_odometry()
+{
+  cout << "x:" << _x << " y:" << _y << " theta:" << _theta << endl;
+}
+        
+//////////////////////////////////////////////
+
+bool MyRobot::goal_reached()
+{
+  if(_x < _x_goal || _y < _y_goal) {
+      return false;
+      }
+  else {
+      return true;
+      }
+}
+
+//////////////////////////////////////////////
+
+// float MyRobot::angle_drive(float target, float heading)
+// {
+   // float angle_diff = target - heading;
+   
+   // cout << "Angle difference: " << angle_diff << endl;
+   
+   // if(angle_diff < 3.0 && angle_diff > -3.0) {
+       // forward();
+       // cout << "Angle driving: moving forward" << endl;
+       // }
+   // else if(angle_diff >= 3 && angle_diff < 180) {
+       // right_turn();
+       // cout << "Angle driving: turning right" << endl;
+       // }
+   // else {
+       // left_turn();
+       // cout << "Angle driving: turning left" << endl;
+       // }
+   
+   // //set the motor speeds
+       // _left_wheel_motor->setVelocity(_left_speed);
+       // _right_wheel_motor->setVelocity(_right_speed);
+   
+   // return 0;
+// }
+
+///////////////////////////////////////////////
+
+void MyRobot::right_turn()
+{
+    _left_speed = APPR_TURN_SPEED;
+    _right_speed = -APPR_TURN_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::left_turn()
+{
+    _left_speed = -APPR_TURN_SPEED;
+    _right_speed = APPR_TURN_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::forward()
+{
+    _left_speed = MAX_SPEED;
+    _right_speed = MAX_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::back()
+{
+    _left_speed = -MAX_SPEED;
+    _right_speed = -MAX_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::approach()
+{
+    _left_speed = APPR_TURN_SPEED;
+    _right_speed = APPR_TURN_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::stop()
+{
+    _left_speed = 0;
+    _right_speed = 0;
+}
+//////////////////////////////////////////////
