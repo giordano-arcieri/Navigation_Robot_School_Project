@@ -3,7 +3,7 @@
 MyRobot::MyRobot()
 {
     // This Constructer will init all default values and enable all sensors
-    
+
     // Time step
     this->time_step = 64;
 
@@ -17,13 +17,13 @@ MyRobot::MyRobot()
 
     // We set motor position to 0 and then to INFINITY re-initialize the encoder measurement and then allow velocity control
     right_wheel_motor->setPosition(0.0);
-    left_wheel_motor->setPosition(0.0); 
-    right_wheel_motor->setPosition(INFINITY); 
+    left_wheel_motor->setPosition(0.0);
+    right_wheel_motor->setPosition(INFINITY);
     left_wheel_motor->setPosition(INFINITY);
 
     // Set motor velocity to 0
-    right_wheel_motor->setVelocity(0.0);
-    left_wheel_motor->setVelocity(0.0);
+    right_wheel_motor->setVelocity(this->right_speed);
+    left_wheel_motor->setVelocity(this->left_speed);
 
     // Camera sensors
     forward_camera = getCamera("camera_f");
@@ -32,9 +32,9 @@ MyRobot::MyRobot()
     spherical_camera->enable(time_step);
 
     // Laser sensors
-    for(int i = 0; i < 16; i++)
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++)
     {
-        std::string name = "laser_sensor" + std::to_string(i);
+        std::string name = "ds" + std::to_string(i);
         laser_sensors[i] = getDistanceSensor(name);
         laser_sensors[i]->enable(time_step);
     }
@@ -43,17 +43,18 @@ MyRobot::MyRobot()
     left_wheel_encoder = getPositionSensor("left wheel sensor");
     right_wheel_encoder = getPositionSensor("right wheel sensor");
     left_wheel_encoder->enable(time_step);
-    right_wheel_encoder->enable(time_step); 
+    right_wheel_encoder->enable(time_step);
 
     // Compass
     compass = getCompass("compass");
     compass->enable(time_step);
 
-    // // GPS
+    // GPS
     gps = getGPS("gps");
     gps->enable(time_step);
 
-    
+    // Log the construction of the robot
+    Logger::log("Robot class constructed");
 }
 
 MyRobot::~MyRobot()
@@ -65,10 +66,10 @@ MyRobot::~MyRobot()
     spherical_camera->disable();
 
     // Laser sensors
-    // for(int i = 0; i < 16; i++)
-    // {
-    //     laser_sensors[i]->disable();
-    // }
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++)
+    {
+        laser_sensors[i]->disable();
+    }
 
     // Encoders
     left_wheel_encoder->disable();
@@ -80,30 +81,66 @@ MyRobot::~MyRobot()
     // GPS
     gps->disable();
 
+    // Log the destruction of the robot
+    Logger::log("Robot class destroyed");
 }
 
 void MyRobot::run()
 {
-    // Print the values of all enabled sensors
-    std::cout << "Sensor values:" << std::endl;
+    // This function will be called every time step
 
-    // Camera sensors
-    // std::cout << "Forward Camera: " << forward_camera->getImage() << std::endl;
-    // std::cout << "Spherical Camera: " << spherical_camera->getImage() << std::endl;
+    // Log the run of the robot
+    Logger::log("Robot class run");
+    
+}
 
-    // Laser sensors
-    // for(int i = 0; i < 16; i++)
-    // {
-    //     std::cout << "Laser Sensor " << i << ": " << laser_sensors[i]->getValue() << std::endl;
-    // }
+void MyRobot::set_left_speed(double speed)
+{
+    this->left_speed = speed;
+    left_wheel_motor->setVelocity(this->left_speed);
 
-    // Encoders
-    std::cout << "Left Wheel Encoder: " << left_wheel_encoder->getValue() << std::endl;
-    std::cout << "Right Wheel Encoder: " << right_wheel_encoder->getValue() << std::endl;
+    Logger::log("Left wheel speed set to " + std::to_string(this->left_speed));
+}
 
-    // Compass
-    std::cout << "Compass: " << compass->getValues()[0] << ", " << compass->getValues()[1] << ", " << compass->getValues()[2] << std::endl;
+void MyRobot::set_right_speed(double speed)
+{
+    this->right_speed = speed;
+    right_wheel_motor->setVelocity(this->right_speed);
 
-    // GPS
-    std::cout << "GPS: " << gps->getValues()[0] << ", " << gps->getValues()[1] << ", " << gps->getValues()[2] << std::endl;
+    Logger::log("Right wheel speed set to " + std::to_string(this->right_speed));
+}
+
+double MyRobot::get_laser_index_value(int index) const
+{
+    return laser_sensors[index]->getValue();
+}
+
+std::array<double, NUMBER_OF_SENSORS> MyRobot::get_laser_sensors_values() const
+{
+    std::array<double, NUMBER_OF_SENSORS> laser_values;
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++)
+    {
+        laser_values[i] = laser_sensors[i]->getValue();
+    }
+    return laser_values;
+}
+
+double MyRobot::get_left_wheel_encoder_value() const
+{
+    return left_wheel_encoder->getValue();
+}
+
+double MyRobot::get_right_wheel_encoder_value() const
+{
+    return right_wheel_encoder->getValue();
+}
+
+std::array<double, 3> MyRobot::get_compass_value() const
+{
+    return {compass->getValues()[0], compass->getValues()[1], compass->getValues()[2]};
+}
+
+std::array<double, 3> MyRobot::get_gps_value() const
+{
+    return {gps->getValues()[0], gps->getValues()[1], gps->getValues()[2]};
 }
