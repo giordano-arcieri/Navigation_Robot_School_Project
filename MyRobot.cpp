@@ -464,9 +464,30 @@ void MyRobot::switch_drive()
     }
 }
 
+
+//include a condition about the direction of the robot
+//continue to wall follow until it reaches the right angle
+//alterante between right and left -->try this first to make the program at least functional
+//or record the relative coordinates where the robot is getting stuck
+  //the origin is just 0,0
+  //store the place
+  
+  
+  //if the two sensors facing the wall are relatively similar then drive forward
+  //800 maybe use speed 0.1
+  //make the odometry work
+  //Array or hash table for a vector???
+  //struct
+  
 ///////////////////////////////////////
 
 //Searching program
+
+  //Easiest situation
+  //Both cylinders on ends of endzone
+  //Distinguishing between cylinders close to each other
+  //Save the relative position and make sure that it is different by a significant
+      //enough margin when the following objects are detected
 
 ///////////////////////////////////////
 
@@ -485,3 +506,8 @@ void MyRobot::switch_drive()
 //Distance traveled calculation
 
 ////////////////////////////////////////
+
+//Clock get time function for limiting time searching
+//Some libraries only work in linux
+//Maybe download linux
+//Make sure funcitons work in both OS
