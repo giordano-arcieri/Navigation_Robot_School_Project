@@ -37,21 +37,11 @@ MyRobot::MyRobot() : Robot()
 
     has_turned = true;
 
-    // Motor Position Sensor initialization
-    _left_wheel_sensor = getPositionSensor("left wheel sensor");
-    _right_wheel_sensor = getPositionSensor("right wheel sensor");
-    _left_wheel_sensor->enable(_time_step);
-    _right_wheel_sensor->enable(_time_step);
+    avoiding_obstacle = false;
 
-    // Get robot's GPS; initialize it
-    _my_gps = getGPS("gps");
-    _my_gps->enable(_time_step);
+    direction = LEFT;
 
-    // Get robot's compass; initialize it
-    _my_compass = getCompass("compass");
-    _my_compass->enable(_time_step);
-
-    // Motor initialization
+    ////// Motor Initialization //////
     _left_wheel_motor = getMotor("left wheel motor");
     _right_wheel_motor = getMotor("right wheel motor");
 
@@ -65,52 +55,34 @@ MyRobot::MyRobot() : Robot()
     _right_wheel_motor->setVelocity(_left_speed);
     _left_wheel_motor->setVelocity(_right_speed);
 
-    // get distance sensor array and enable each one
+    ////// Motor Position Sensor Initialization //////
+    _left_wheel_sensor = getPositionSensor("left wheel sensor");
+    _right_wheel_sensor = getPositionSensor("right wheel sensor");
+    _left_wheel_sensor->enable(_time_step);
+    _right_wheel_sensor->enable(_time_step);
 
-    // Ds0 is front left
-    _distance_sensor[0] = getDistanceSensor("ds0");
-    _distance_sensor[0]->enable(_time_step);
+    ////// Distance Sensors Initialization //////
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++)
+    {
+        std::string name = "ds" + std::to_string(i);
+        _distance_sensor[i] = getDistanceSensor(name);
+        _distance_sensor[i]->enable(_time_step);
+    }
 
-    // Ds15 is front right
-    _distance_sensor[1] = getDistanceSensor("ds15");
-    _distance_sensor[1]->enable(_time_step);
+    ////// GPS Initialization //////
+    _my_gps = getGPS("gps");
+    _my_gps->enable(_time_step);
 
-    // Ds3 is on the side; forward left
-    _distance_sensor[2] = getDistanceSensor("ds3");
-    _distance_sensor[2]->enable(_time_step);
+    ////// Compass Initialization //////
+    _my_compass = getCompass("compass");
+    _my_compass->enable(_time_step);
 
-    // Ds12 is on the side; forward right
-    _distance_sensor[3] = getDistanceSensor("ds12");
-    _distance_sensor[3]->enable(_time_step);
-
-    // Ds4 is on the side; back left
-    _distance_sensor[4] = getDistanceSensor("ds4");
-    _distance_sensor[4]->enable(_time_step);
-
-    // Ds4 is on the side; back right
-    _distance_sensor[5] = getDistanceSensor("ds11");
-    _distance_sensor[5]->enable(_time_step);
-
-    // Ds1 is on the front; left middle sensor
-    _distance_sensor[6] = getDistanceSensor("ds1");
-    _distance_sensor[6]->enable(_time_step);
-
-    // Ds2 is on the front; left edge sensor
-    _distance_sensor[7] = getDistanceSensor("ds2");
-    _distance_sensor[7]->enable(_time_step);
-
-    // Ds14 is on the front; right middle sensor
-    _distance_sensor[8] = getDistanceSensor("ds14");
-    _distance_sensor[8]->enable(_time_step);
-
-    // Ds13 is on the front; right edge sensor
-    _distance_sensor[9] = getDistanceSensor("ds13");
-    _distance_sensor[9]->enable(_time_step);
-
-    // get cameras and enable them
+    ////// Camera Initialization //////
+    // Forward Camera
     _forward_camera = getCamera("camera_f");
     _forward_camera->enable(_time_step);
 
+    // Spherical Camera
     _spherical_camera = getCamera("camera_s");
     _spherical_camera->enable(_time_step);
 }
@@ -127,16 +99,10 @@ MyRobot::~MyRobot()
     _my_compass->disable();
 
     // disable distance sensors
-    _distance_sensor[0]->disable();
-    _distance_sensor[1]->disable();
-    _distance_sensor[2]->disable();
-    _distance_sensor[3]->disable();
-    _distance_sensor[4]->disable();
-    _distance_sensor[5]->disable();
-    _distance_sensor[6]->disable();
-    _distance_sensor[7]->disable();
-    _distance_sensor[8]->disable();
-    _distance_sensor[9]->disable();
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++)
+    {
+        _distance_sensor[i]->disable();
+    }
 
     _forward_camera->disable();
     _spherical_camera->disable();
@@ -337,7 +303,7 @@ void MyRobot::stop()
 
 void MyRobot::navigation()
 {
-    if (obstacle_detected)
+    if (avoiding_obstacle || obstacle_detected())
     {
         wall_follower();
         cout << "Obstacle detected: wall following" << endl;
@@ -352,28 +318,22 @@ void MyRobot::navigation()
 
 void MyRobot::get_dist_val()
 {
-    front_L = _distance_sensor[0]->getValue();
-    front_R = _distance_sensor[1]->getValue();
+    front_L = _distance_sensor[FRONT_LEFT]->getValue();
+    front_R = _distance_sensor[FRONT_RIGHT]->getValue();
     front = (front_L + front_R) / 2.0;
 
-    side_F_L = _distance_sensor[2]->getValue();
-    side_F_R = _distance_sensor[3]->getValue();
-    side_B_L = _distance_sensor[4]->getValue();
-    side_B_R = _distance_sensor[5]->getValue();
+    side_F_L = _distance_sensor[SIDE_FRONT_LEFT]->getValue();
+    side_F_R = _distance_sensor[SIDE_FRONT_RIGHT]->getValue();
+    side_B_L = _distance_sensor[SIDE_BACK_LEFT]->getValue();
+    side_B_R = _distance_sensor[SIDE_BACK_RIGHT]->getValue();
 
-    front_M_L = _distance_sensor[6]->getValue();
-    front_E_L = _distance_sensor[7]->getValue();
+    front_M_L = _distance_sensor[FRONT_MIDDLE_LEFT]->getValue();
+    front_E_L = _distance_sensor[FRONT_EDGE_LEFT]->getValue();
     edge_L = (front_M_L + front_E_L) / 2.0;
 
-    front_M_R = _distance_sensor[8]->getValue();
-    front_E_R = _distance_sensor[9]->getValue();
+    front_M_R = _distance_sensor[FRONT_MIDDLE_RIGHT]->getValue();
+    front_E_R = _distance_sensor[FRONT_EDGE_RIGHT]->getValue();
     edge_R = (front_M_R + front_E_R) / 2.0;
-
-    // cout << "***Front sensor display***" << endl;
-    // cout << "Front: " << front << endl;
-    // cout << "Front edge right: " << edge_R << " Front side right: " << side_F_R << endl;
-    // cout << "Front edge left: " << edge_L << " Front side left: " << side_F_L << endl;
-    // cout << "***End distance display***" << endl;
 }
 
 //////////////////////////////////////
@@ -551,7 +511,6 @@ void MyRobot::gps_display()
     cout << "GPS Y: " << GPS_Y << endl;
 }
 
-
 //////////////////////////////////////
 
 void MyRobot::crossed_endline()
@@ -686,36 +645,24 @@ void MyRobot::green_drive()
 }
 //////////////////////////////////////
 
-void MyRobot::switch_drive()
+bool MyRobot::obstacle_detected()
 {
     if (front > 0.0 || side_F_L > 0.0 || side_F_R > 0.0 || edge_L > 0.0 || edge_R > 0.0)
     {
-        obstacle_detected = true;
+        return true;
     }
-    else
-    {
-        obstacle_detected = false;
-    }
+    return false;
 }
 
 //////////////////////////////////////
 
-void MyRobot::switch_turn()
+Direction MyRobot::turn_direction()
 {
-    delay_counter++;
-    // cout << "Delay counter: " << delay_counter << endl;
-    // cout << "Delay calculation: " << delay_counter % 2000 << endl;
+    static int direction = 0;
 
-    if (delay_counter % 2000 > 1000)
-    {
-        turn_option = true;
-        // cout << "Turn option is true" << endl;
-    }
-    else
-    {
-        turn_option = false;
-        // cout << "Turn option is false" << endl;
-    }
+    direction += 1;
+
+    return static_cast<Direction>(direction % 2);
 }
 
 ////////////////////////////////////////
@@ -737,11 +684,6 @@ void MyRobot::update_robot_data()
     // checks how many yellow pixels. if % > 1 and GPS_X == 9, increment cross_count
     crossed_endline();
 
-    // updates obstacle_detected if any walls detected
-    switch_drive();
-
-    // updates turn option randomly
-    switch_turn();
 }
 
 ////////////////////////////////////////
@@ -767,3 +709,23 @@ bool MyRobot::victims_found()
 {
     return vic_count == 2;
 }
+
+//////////////////////////////////////
+
+void MyRobot::switch_turn()
+{
+    delay_counter++;
+    //cout << "Delay counter: " << delay_counter << endl;
+    //cout << "Delay calculation: " << delay_counter % 2000 << endl;
+    
+    if(delay_counter % 2000 > 1000) {
+        turn_option = true;
+        //cout << "Turn option is true" << endl;
+        }
+    else {
+        turn_option = false;
+        //cout << "Turn option is false" << endl;
+        }
+}
+
+////////////////////////////////////////

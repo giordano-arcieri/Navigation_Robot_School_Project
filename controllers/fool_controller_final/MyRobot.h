@@ -42,6 +42,25 @@ using namespace webots;
 
 #define ENCODER_TICS_PER_RADIAN 1
 #define NUM_DISTANCE_SENSOR 10 
+#define NUMBER_OF_SENSORS 16
+
+enum Sensors {
+    FRONT_LEFT = 0,
+    FRONT_RIGHT = 15,
+    SIDE_FRONT_LEFT = 3,
+    SIDE_FRONT_RIGHT = 12,
+    SIDE_BACK_LEFT = 4,
+    SIDE_BACK_RIGHT = 11,
+    FRONT_MIDDLE_LEFT = 1,
+    FRONT_EDGE_LEFT = 2,
+    FRONT_MIDDLE_RIGHT = 14,
+    FRONT_EDGE_RIGHT = 13,
+};
+
+enum Direction {
+    LEFT = 0,
+    RIGHT = 1,
+};
 
 class MyRobot : public Robot {
 public:
@@ -122,10 +141,10 @@ private:
     double front_M_R;
     double front_E_R;
     double edge_R;
-    
-    //true-false variable to switch between wall following and directional movement
-    bool obstacle_detected;
-    
+
+    //
+    bool turn_option;
+
     float angle_diff;
     
     //variable to track number of times the robot has crossed
@@ -142,9 +161,6 @@ private:
     
     //true-false test variable for returning to start point after reaching endzone
     bool endzone_test;
-    
-    //true-false to switch between wall following strategies
-    bool turn_option;
     
     //ticker to help store goal heading for 90 degree turn
     bool tick;
@@ -174,7 +190,7 @@ private:
     Motor* _right_wheel_motor;
 
     // Distance sensor 
-    DistanceSensor * _distance_sensor[NUM_DISTANCE_SENSOR];
+    DistanceSensor * _distance_sensor[NUMBER_OF_SENSORS];
     
     //GPS 
     GPS * _my_gps;
@@ -235,10 +251,12 @@ private:
     
     void angle_drive();
     
-    void switch_drive();
-    
-    void switch_turn();
-    
+    bool obstacle_detected();
+    bool avoiding_obstacle;
+
+    Direction turn_direction();
+    Direction direction;
+
     void normalize_angle(int angle);
     
     void right_turn_ninety(double target_heading);
@@ -280,6 +298,7 @@ private:
 
     bool victims_found();
 
+    void switch_turn();
 };
 #endif
 
