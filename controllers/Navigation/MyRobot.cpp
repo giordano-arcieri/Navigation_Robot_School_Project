@@ -54,7 +54,7 @@ MyRobot::MyRobot()
     gps->enable(time_step);
 
     // Log the construction of the robot
-    Logger::log("Robot class constructed");
+    //Logger::log("Robot class constructed");
 }
 
 MyRobot::~MyRobot()
@@ -82,24 +82,60 @@ MyRobot::~MyRobot()
     gps->disable();
 
     // Log the destruction of the robot
-    Logger::log("Robot class destroyed");
+    //Logger::log("Robot class destroyed");
 }
 
 void MyRobot::run()
 {
     // This function will be called every time step
+    const double *compass_val = this->compass->getValues();
 
-    // Log the run of the robot
-    Logger::log("Robot class run");
-    
+    // convert compass bearing vector to angle, in degrees
+    double compass_angle = convert_bearing_to_degrees(compass_val);
+
+    // print sensor values to console
+    //Logger::log("Compass angle: " + std::to_string(compass_angle));
+
+    // simple bang-bang control
+    // if (compass_angle < (DESIRED_ANGLE - 2))
+    // {
+    //     // turn right
+    //     _left_speed = MAX_SPEED;
+    //     _right_speed = MAX_SPEED - 3;
+    // }
+    // else
+    // {
+    //     if (compass_angle > (DESIRED_ANGLE + 2))
+    //     {
+    //         // turn left
+    //         _left_speed = MAX_SPEED - 3;
+    //         _right_speed = MAX_SPEED;
+    //     }
+    //     else
+    //     {
+    //         // move straight forward
+    //         cout << "Moving forward" << endl;
+    //         _left_speed = MAX_SPEED;
+    //         _right_speed = MAX_SPEED;
+    //     }
+    // }
+
+    // // set the motor position to non-stop moving
+    // _left_wheel_motor->setPosition(INFINITY);
+    // _right_wheel_motor->setPosition(INFINITY);
+
+    // // set the motor speeds
+    // _left_wheel_motor->setVelocity(_left_speed);
+    // _right_wheel_motor->setVelocity(_right_speed);
 }
+
 
 void MyRobot::set_left_speed(double speed)
 {
     this->left_speed = speed;
     left_wheel_motor->setVelocity(this->left_speed);
 
-    Logger::log("Left wheel speed set to " + std::to_string(this->left_speed));
+    //Logger::log("Left wheel speed set to " + std::to_string(this->left_speed));
 }
 
 void MyRobot::set_right_speed(double speed)
@@ -107,7 +143,7 @@ void MyRobot::set_right_speed(double speed)
     this->right_speed = speed;
     right_wheel_motor->setVelocity(this->right_speed);
 
-    Logger::log("Right wheel speed set to " + std::to_string(this->right_speed));
+    //Logger::log("Right wheel speed set to " + std::to_string(this->right_speed));
 }
 
 double MyRobot::get_laser_index_value(int index) const
@@ -143,4 +179,12 @@ std::array<double, 3> MyRobot::get_compass_value() const
 std::array<double, 3> MyRobot::get_gps_value() const
 {
     return {gps->getValues()[0], gps->getValues()[1], gps->getValues()[2]};
+}
+
+double MyRobot::convert_bearing_to_degrees(const double* in_vector) const
+{
+    double rad = atan2(in_vector[0], in_vector[2]);
+    double deg = rad * (180.0 / M_PI);
+
+    return deg;
 }

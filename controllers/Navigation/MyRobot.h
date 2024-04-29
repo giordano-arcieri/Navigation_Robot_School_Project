@@ -102,6 +102,10 @@ public:
 
     // GPS
     std::array<double, 3> get_gps_value() const;
+
+    // Helper function
+    double convert_bearing_to_degrees(const double* in_vector) const;
+
 };
 
 #endif

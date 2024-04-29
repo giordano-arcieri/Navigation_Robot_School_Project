@@ -12,6 +12,7 @@ int main(int argc, char **argv)
 
   while (robot->step(timeStep) != -1)
   {
+    std::cout << 'h';
     robot->run();
   };
 

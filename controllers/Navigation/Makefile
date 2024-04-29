@@ -71,4 +71,4 @@ CXX_SOURCES = Navigation.cpp MyRobot.cpp
 space :=
 space +=
 WEBOTS_HOME_PATH=/usr/local/webots/
-include $(WEBOTS_HOME_PATH)/resources/Makefile.include
+include $(WEBOTS_HOME_PATH)resources/Makefile.include

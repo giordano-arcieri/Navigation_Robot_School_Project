@@ -40,6 +40,7 @@
 ### ---- C++ Sources ----
 ### if your program uses several C++ source files:
 ### CXX_SOURCES = my_plugin.cc my_clever_algo.cpp my_graphics.c++
+CXX_SOURCES = fool_controller_final.cpp MyRobot.cpp
 ###
 ### ---- Compilation options ----
 ### if special compilation flags are necessary:
@@ -68,5 +69,6 @@
 ### Do not modify: this includes Webots global Makefile.include
 null :=
 space := $(null) $(null)
-WEBOTS_HOME_PATH=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
+WEBOTS_HOME_PATH=/usr/local/webots
 include $(WEBOTS_HOME_PATH)/resources/Makefile.include
+
