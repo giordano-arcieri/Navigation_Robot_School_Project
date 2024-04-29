@@ -9,7 +9,7 @@
 
 #include "MyRobot.h"
 
-//////////////////////////////////////////////
+//////////////// CONSTRUCTER AND DECONSTRUCTER //////////////////////////////
 
 MyRobot::MyRobot() : Robot()
 {
@@ -25,21 +25,15 @@ MyRobot::MyRobot() : Robot()
     calc_x = calc_y = calc_theta = 0.0; // robot pose variables
     _sr = _sl = 0.0;                    // displacement right and left wheels
 
-    count_turn = 1;
-
-    tick = true;
-
-    cross_count = 1;
-
     vic_count = 0;
-
-    delay_counter = 2000;
-
-    has_turned = true;
 
     avoiding_obstacle = false;
 
+    navigation_status = TURNING;
+
     direction = LEFT;
+
+    delay_counter = 2000;
 
     ////// Motor Initialization //////
     _left_wheel_motor = getMotor("left wheel motor");
@@ -108,23 +102,26 @@ MyRobot::~MyRobot()
     _spherical_camera->disable();
 }
 
-//////////////////////////////////////////////
-// Controller main logic
+//////////////////////// END ////////////////////////////////////////
+
+///////////////// MAIN DRIVERS /////////////////////////////
+
 void MyRobot::run()
 {
 
     _left_speed = MAX_SPEED;
     _right_speed = MAX_SPEED;
 
-    // set the motor speeds
-    _left_wheel_motor->setVelocity(_left_speed);
-    _right_wheel_motor->setVelocity(_right_speed);
-
     // updates some attributes and gets width/height of the cameras
     get_camera_size();
 
     while (step(_time_step) != -1)
     {
+        // adjust speed
+        _left_wheel_motor->setVelocity(_left_speed);
+        _right_wheel_motor->setVelocity(_right_speed);
+
+        cout << "[DATA] : \n";
 
         // collects all data from robot sensors
         update_robot_data();
@@ -132,18 +129,172 @@ void MyRobot::run()
         // diplays all robot data from sensors to cout
         display_robot_data();
 
+        cout << "[DRIVERS] : \n";
+
         if (robot_is_in_endzone() && !victims_found())
         {
+            cout << "[MAIN] : Searching Endzone ... \n";
             search_endzone();
         }
         else
         {
+            cout << "[MAIN] : Navigating Maze ... \n";
             navigation();
+        }
+
+        cout << "******************************************************\n";
+    }
+}
+
+////////////////////////////////////////
+
+void MyRobot::update_robot_data()
+{
+    // computed odometry with tics
+    compute_odometry();
+
+    // gets distance sensor values
+    get_dist_val();
+
+    // gets x y cordinates from GPS
+    get_gps_val();
+
+    // updates _theta
+    update_global_theta();
+}
+
+////////////////////////////////////////
+
+void MyRobot::display_robot_data()
+{
+    // print odometry
+    print_odometry();
+
+    // display encoder values
+    encoder_display();
+
+    //
+    distance_sensor_display();
+
+    // display GPS values
+    gps_display();
+
+    compass_display();
+}
+
+///////////////// NAVIGATION /////////////////////////////
+
+void MyRobot::navigation()
+{
+    if (!avoiding_obstacle && !front)
+    {
+        cout << "[NAV] : No obstacle in front: angle driving\n";
+        angle_drive();
+    }
+    else
+    {
+        cout << "[NAV] : Obstacle detected: wall following\n";
+        wall_follower();
+    }
+}
+//////////////////////////////////////////////
+
+void MyRobot::angle_drive()
+{
+    if (target < 0.0)
+    {
+        if (angle_diff >= -1.0 && angle_diff <= 1)
+        {
+            cout << "[ANGLE DRIVE] : Moving forward" << endl;
+            forward();
+        }
+        else if (angle_diff < -1 && angle_diff >= -180)
+        {
+            cout << "[ANGLE DRIVE] : Adjusting left" << endl;
+            left_turn_adj();
+        }
+        else
+        { // Handles angle_diff < -5 || angle_diff > 180
+            cout << "[ANGLE DRIVE] : Adjusting right" << endl;
+            right_turn_adj();
         }
     }
 }
 
 //////////////////////////////////////////////
+
+void MyRobot::wall_follower()
+{
+    if (avoiding_obstacle == false)
+    {
+        avoiding_obstacle = true;
+        direction = turn_direction();
+    }
+    if (navigation_status == TURNING)
+    {
+        cout << "[WALL FOLLOWER] : Preapering to wall follow. Direction is ";
+        if (direction == LEFT)
+        {
+            double diff = side_B_L - side_F_L;
+            cout << "Left" << diff << "\n";
+            if (diff < 0.1 && diff > -0.1)
+            {
+                _left_speed = MED_SPEED;
+                _right_speed = MED_SPEED * -1;
+            }
+            else
+            {
+                navigation_status = WALL_FOLLOWING;
+            }
+        }
+        else
+        {
+            double diff = side_B_R - side_F_R;
+            cout << "Right" << diff << "\n";
+            if (diff < 0.1 && diff > -0.1)
+            {
+                _left_speed = MED_SPEED * -1;
+                _right_speed = MED_SPEED;
+            }
+            else
+            {
+                navigation_status = WALL_FOLLOWING;
+            }
+        }
+    }
+    else if (navigation_status == WALL_FOLLOWING)
+    {
+        cout << "[WALL FOLLOWER] : Wall following ";
+        if (direction == RIGHT)
+        {
+            cout << "Right\n";
+        }
+        else
+        {
+            cout << "Left\n";
+        }
+        if (angle_diff >= -1.0 && angle_diff <= 1 && !front)
+        {
+            navigation_status = TURNING;
+            avoiding_obstacle = false;
+        }
+        // navigation_status = TURNING;
+        // avoiding_obstacle = false;
+        _left_speed = 0;
+        _right_speed = 0;
+    }
+}
+
+////////////////////// SERACHING ENDZONE ////////////////////////////
+
+void MyRobot::search_endzone()
+{
+    cout << "[SEARCH] : Searching Endzone" << endl;
+}
+
+//////////////////////// END ////////////////////////////////////////
+
+/////////////////// UPDATING FUNCTIONS ////////////////////////////////
 
 void MyRobot::compute_odometry()
 {
@@ -159,162 +310,7 @@ void MyRobot::compute_odometry()
     _sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue());
 }
 
-//////////////////////////////////////////////
-
-float MyRobot::encoder_tics_to_meters(float tics)
-{
-    return tics / ENCODER_TICS_PER_RADIAN * WHEEL_RADIUS;
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::print_odometry()
-{
-    cout << "x:" << calc_x << " y:" << calc_y << " theta: " << calc_theta << endl;
-}
-
-//////////////////////////////////////////////
-
-double MyRobot::convert_bearing_to_degrees()
-{
-    const double *in_vector = _my_compass->getValues();
-
-    double rad = atan2(in_vector[0], in_vector[2]);
-    double deg = rad * (180.0 / M_PI);
-
-    return deg;
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::update_global_theta()
-{
-    _theta = convert_bearing_to_degrees();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::angle_drive()
-{
-    angle_diff = target - _theta;
-
-    cout << "Desired angle: " << target << " Angle difference: " << angle_diff << endl;
-    if (target < 0.0)
-    {
-        if (angle_diff >= -1.0 && angle_diff <= 1)
-        {
-            cout << "Moving forward" << endl;
-            forward();
-        }
-        else if (angle_diff < -1 && angle_diff >= -180)
-        {
-            cout << "Turning left" << endl;
-            left_turn_adj();
-        }
-        else
-        { // Handles angle_diff < -5 || angle_diff > 180
-            cout << "Turning right" << endl;
-            right_turn_adj();
-        }
-    }
-}
-
-///////////////////////////////////////////////
-
-void MyRobot::set_velo()
-{
-    _left_wheel_motor->setVelocity(_left_speed);
-    _right_wheel_motor->setVelocity(_right_speed);
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::right_turn_adj()
-{
-    _left_speed = MAX_SPEED;
-    _right_speed = MED_SPEED;
-    set_velo();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::left_turn_adj()
-{
-    _left_speed = MED_SPEED;
-    _right_speed = MAX_SPEED;
-    set_velo();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::right_turn()
-{
-    _left_speed = SLOW_SPEED;
-    _right_speed = -SLOW_SPEED;
-    set_velo();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::left_turn()
-{
-    _left_speed = -SLOW_SPEED;
-    _right_speed = SLOW_SPEED;
-    set_velo();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::forward()
-{
-    _left_speed = MAX_SPEED;
-    _right_speed = MAX_SPEED;
-    set_velo();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::back()
-{
-    _left_speed = -MED_SPEED;
-    _right_speed = -MED_SPEED;
-    set_velo();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::approach()
-{
-    _left_speed = SLOW_SPEED;
-    _right_speed = SLOW_SPEED;
-    set_velo();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::stop()
-{
-    _left_speed = 0;
-    _right_speed = 0;
-    set_velo();
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::navigation()
-{
-    if (avoiding_obstacle || obstacle_detected())
-    {
-        wall_follower();
-        cout << "Obstacle detected: wall following" << endl;
-    }
-    else
-    {
-        angle_drive();
-        cout << "No obstacle in front: angle driving" << endl;
-    }
-}
-//////////////////////////////////////////////
+//////////////////////////////////////
 
 void MyRobot::get_dist_val()
 {
@@ -338,139 +334,18 @@ void MyRobot::get_dist_val()
 
 //////////////////////////////////////
 
-void MyRobot::wall_follower()
+void MyRobot::get_gps_val()
 {
-    angle_diff = target - _theta;
-
-    // cout << "Angle difference is: " << _theta << endl;
-
-    if (front > 0.0 && (side_F_R > 0.0 || edge_R > 0.0))
-    {
-        cout << "Case 1" << endl;
-        stop();
-        left_turn();
-    }
-    else if (front > 0.0 && (side_F_L > 0.0 || edge_L > 0.0))
-    {
-        cout << "Case 2" << endl;
-        stop();
-        right_turn();
-    }
-    else if (side_F_L > 200.0 || edge_L > 0.0)
-    {
-        cout << "Case 3" << endl;
-        right_turn_adj();
-    }
-    else if (side_F_R > 200.0 || edge_R > 0.0)
-    {
-        cout << "Case 4" << endl;
-        left_turn_adj();
-    }
-    // Side front left case
-    else if (side_F_L > 0.0)
-    {
-        right_turn();
-        stop();
-        if ((side_F_L > side_B_L + 200.0) || (side_F_L < side_B_L - 200.0))
-        {
-            right_turn();
-            cout << "Case 5" << endl;
-        }
-        else
-        {
-            forward();
-            cout << "Case 6" << endl;
-        }
-    }
-
-    // Side front right case
-    else if (side_F_R > 0.0)
-    {
-        left_turn();
-        stop();
-        if ((side_F_R > side_B_R + 200.0) || (side_F_R < side_B_R - 200.0))
-        {
-            left_turn();
-            cout << "Case 7" << endl;
-        }
-        else
-        {
-            forward();
-            cout << "Case 8" << endl;
-        }
-    }
-    else if (front > 0.0 && side_F_L == 0.0 && side_F_R == 0.0)
-    {
-        stop();
-        if (turn_option)
-        {
-            cout << "Case 9" << endl;
-            right_turn();
-        }
-        else
-        {
-            cout << "Case 10" << endl;
-            left_turn();
-        }
-    }
-    else
-    {
-        forward();
-    }
+    GPS_X = _my_gps->getValues()[2];
+    GPS_Y = _my_gps->getValues()[0];
 }
 
-//////////////////////////////////////////////
+/////////////////////////////////////////////
 
-void MyRobot::green_identifier()
+void MyRobot::update_global_theta()
 {
-    int green_count_L = 0;
-    int green_count_R = 0;
-
-    // get current image from forward camera
-    const unsigned char *image_f = _forward_camera->getImage();
-
-    // count number of pixels that are green on the left half of the camera
-    // (here assumed to have pixel value > 245 out of 255 for all color components)
-    for (int x = 0; x < image_width_f / 2; x++)
-    {
-        for (int y = 0; y < image_height_f; y++)
-        {
-            green_L = _forward_camera->imageGetGreen(image_f, image_width_f, x, y);
-            red_L = _forward_camera->imageGetRed(image_f, image_width_f, x, y);
-            blue_L = _forward_camera->imageGetBlue(image_f, image_width_f, x, y);
-
-            if ((green_L > GREEN_THRESHOLD) && (red_L < GREEN_THRESHOLD) && (blue_L < GREEN_THRESHOLD))
-            {
-                green_count_L = green_count_L + 1;
-            }
-        }
-    }
-
-    // count number of pixels that are green on the right half of the camera
-    // (here assumed to have pixel value > 245 out of 255 for all color components)
-    for (int a = image_width_f / 2; a < image_width_f; a++)
-    {
-        for (int b = 0; b < image_height_f; b++)
-        {
-            green_R = _forward_camera->imageGetGreen(image_f, image_width_f, a, b);
-            red_R = _forward_camera->imageGetRed(image_f, image_width_f, a, b);
-            blue_R = _forward_camera->imageGetBlue(image_f, image_width_f, a, b);
-
-            if ((green_R > GREEN_THRESHOLD) && (red_R < GREEN_THRESHOLD) && (blue_R < GREEN_THRESHOLD))
-            {
-                green_count_R = green_count_R + 1;
-            }
-        }
-    }
-
-    // cout << "Number of green pixels on left half of camera: " << green_count_L << endl;
-    // cout << "Number of green pixels on right half of camera: " << green_count_R << endl;
-
-    percentage_green_L = (green_count_L / (float)((image_width_f / 2) * image_height_f)) * 100;
-    // cout << "Percentage of green pixels in left half of camera: " << percentage_green_L << endl;
-
-    percentage_green_R = (green_count_R / (float)((image_width_f / 2) * image_height_f)) * 100;
-    // cout << "Percentage of green pixels in right half of camera: " << percentage_green_R << endl;
+    _theta = convert_bearing_to_degrees();
+    angle_diff = target - _theta;
 }
 
 //////////////////////////////////////
@@ -487,23 +362,33 @@ void MyRobot::get_camera_size()
     image_height_s = _spherical_camera->getHeight();
     // cout << "Size of spherical camera image: " << image_width_s << ", " << image_height_s << endl;
 }
-//////////////////////////////////////
 
-void MyRobot::get_gps_val()
+//////////////////////// END ////////////////////////////////////////
+
+/////////////////// PRINTING FUNCTIONS ////////////////////////////////
+
+void MyRobot::print_odometry()
 {
-    GPS_X = _my_gps->getValues()[2];
-    GPS_Y = _my_gps->getValues()[0];
+    cout << "Odom : ( x:" << calc_x << " y:" << calc_y << " theta: " << calc_theta << " )" << endl;
 }
 
 //////////////////////////////////////
 
 void MyRobot::encoder_display()
 {
-    cout << "Left encoder: " << this->_left_wheel_sensor->getValue() << endl;
+    cout << "Left encoder: " << _left_wheel_sensor->getValue() << endl;
     cout << "Right encoder: " << _right_wheel_sensor->getValue() << endl;
 }
 
 //////////////////////////////////////
+
+void MyRobot::distance_sensor_display()
+{
+    cout << "F: " << front << ", SFL: " << side_F_L << ", SBL: " << side_B_L << ", SFR: " << side_F_R << ", SBR: " << side_B_R << "\n";
+}
+
+//////////////////////////////////////
+
 
 void MyRobot::gps_display()
 {
@@ -513,41 +398,9 @@ void MyRobot::gps_display()
 
 //////////////////////////////////////
 
-void MyRobot::crossed_endline()
+void MyRobot::compass_display()
 {
-    int yellow_count = 0;
-
-    // get current image from forward camera
-    const unsigned char *image_s = _spherical_camera->getImage();
-
-    // count number of pixels that are white on left side
-    // (here assumed to have pixel value > 245 out of 255 for all color components)
-    for (int i = 0; i < image_width_s; i++)
-    {
-        for (int j = 0; j < image_height_s; j++)
-        {
-            green_S = _spherical_camera->imageGetGreen(image_s, image_width_s, i, j);
-            red_S = _spherical_camera->imageGetRed(image_s, image_width_s, i, j);
-            blue_S = _spherical_camera->imageGetBlue(image_s, image_width_s, i, j);
-
-            if ((green_S > YELLOW_THRESHOLD) && (red_S > YELLOW_THRESHOLD) && (blue_S < YELLOW_THRESHOLD))
-            {
-                yellow_count = yellow_count + 1;
-            }
-        }
-    }
-
-    // cout << "Yellow count test: " << yellow_count << endl;
-
-    percentage_yellow = (yellow_count / (float)(image_width_s * image_height_s)) * 100;
-    // cout << "Percentage of yellow: " << percentage_yellow << " GPS Value: " << GPS_X <<endl;
-
-    if (percentage_yellow > 1 && GPS_X == 9)
-    {
-        cross_count++;
-    }
-
-    // cout << "Cross count test: " << cross_count << endl;
+    cout << "Compass: " << _theta << endl;
 }
 
 //////////////////////////////////////
@@ -564,85 +417,27 @@ void MyRobot::print_found()
     }
 }
 
-//////////////////////////////////////
+//////////////////////// END ////////////////////////////////////////
 
-void MyRobot::search_endzone()
+//////////////////// HELPER FUNCTIONS //////////////////////////
+
+float MyRobot::encoder_tics_to_meters(float tics)
 {
-    green_identifier();
-
-    // no person has been found
-    if (vic_count == 0)
-    {
-        green_drive();
-    }
-
-    // one person has been found
-    else if (vic_count == 1)
-    {
-        right_turn();
-        int vic_heading_diff = _theta - vic_heading;
-        // cout << "Heading difference is: " << vic_heading_diff << endl;
-
-        if (vic_heading_diff < 50 && vic_heading_diff > -50)
-        {
-            right_turn();
-        }
-        else
-        {
-            green_drive();
-        }
-    }
-    // both people have been found
-    // end search
-    else if (vic_count == 2)
-    {
-        stop();
-    }
+    return tics / ENCODER_TICS_PER_RADIAN * WHEEL_RADIUS;
 }
-//////////////////////////////////////
 
-void MyRobot::green_drive()
+//////////////////////////////////////////////
+
+double MyRobot::convert_bearing_to_degrees()
 {
-    // if neither side of camera detects green, turn right
-    if (percentage_green_L == 0 && percentage_green_R == 0)
-    {
-        right_turn();
-        // cout << "No green; turning right" << endl;
-    }
+    const double *in_vector = _my_compass->getValues();
 
-    // if both sides detect same amount of green, greater than 30 percent, stop
-    else if (percentage_green_L == 100 && percentage_green_R == 100)
-    {
-        vic_count++;
-        print_found();
-        vic_heading = _theta;
-        stop();
-    }
+    double rad = atan2(in_vector[0], in_vector[2]);
+    double deg = rad * (180.0 / M_PI);
 
-    // if both detect same amount of green and they are less than 30 percent, forward
-    // tolerance 3 percent
-    else if (percentage_green_L < (percentage_green_R + GREEN_BUFFER) && percentage_green_L > (percentage_green_R - GREEN_BUFFER))
-    {
-        forward();
-        // cout << "Green in front; forward" << endl;
-    }
-
-    // if right side of camera detects more green than the left side, turn right
-    // tolerance 5 percent
-    else if (percentage_green_R > percentage_green_L)
-    {
-        right_turn_adj();
-        // cout << "Green on right; turning right" << endl;
-    }
-
-    // if left side of camera detects more green than the right side, turn left
-    // tolerance 5 percent
-    else if (percentage_green_R < percentage_green_L)
-    {
-        left_turn_adj();
-        // cout << "Green on left; turning left" << endl;
-    }
+    return deg;
 }
+
 //////////////////////////////////////
 
 bool MyRobot::obstacle_detected()
@@ -667,65 +462,82 @@ Direction MyRobot::turn_direction()
 
 ////////////////////////////////////////
 
-void MyRobot::update_robot_data()
-{
-    // gets x y cordinates from GPS
-    get_gps_val();
-
-    // gets distance sensor values
-    get_dist_val();
-
-    // updates _theta
-    update_global_theta();
-
-    // computed odometry with tics
-    compute_odometry();
-
-    // checks how many yellow pixels. if % > 1 and GPS_X == 9, increment cross_count
-    crossed_endline();
-
-}
-
-////////////////////////////////////////
-
-void MyRobot::display_robot_data()
-{
-    // print odometry
-    print_odometry();
-
-    // display encoder values
-    encoder_display();
-
-    // display GPS values
-    gps_display();
-}
-
 bool MyRobot::robot_is_in_endzone()
 {
     return GPS_X >= 9.0;
 }
+
+////////////////////////////////////////
 
 bool MyRobot::victims_found()
 {
     return vic_count == 2;
 }
 
-//////////////////////////////////////
+//////////////////////// END ////////////////////////////////////////
 
-void MyRobot::switch_turn()
+////////////////////////////// MOVING FUNCTIONS ///////////////////////
+
+void MyRobot::right_turn_adj()
 {
-    delay_counter++;
-    //cout << "Delay counter: " << delay_counter << endl;
-    //cout << "Delay calculation: " << delay_counter % 2000 << endl;
-    
-    if(delay_counter % 2000 > 1000) {
-        turn_option = true;
-        //cout << "Turn option is true" << endl;
-        }
-    else {
-        turn_option = false;
-        //cout << "Turn option is false" << endl;
-        }
+    _left_speed = MAX_SPEED;
+    _right_speed = MED_SPEED;
 }
 
-////////////////////////////////////////
+//////////////////////////////////////////////
+
+void MyRobot::left_turn_adj()
+{
+    _left_speed = MED_SPEED;
+    _right_speed = MAX_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::right_turn()
+{
+    _left_speed = SLOW_SPEED;
+    _right_speed = -SLOW_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::left_turn()
+{
+    _left_speed = -SLOW_SPEED;
+    _right_speed = SLOW_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::forward()
+{
+    _left_speed = MAX_SPEED;
+    _right_speed = MAX_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::back()
+{
+    _left_speed = -MED_SPEED;
+    _right_speed = -MED_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::approach()
+{
+    _left_speed = SLOW_SPEED;
+    _right_speed = SLOW_SPEED;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::stop()
+{
+    _left_speed = 0;
+    _right_speed = 0;
+}
+
+//////////////////////// END ////////////////////////////////////////
