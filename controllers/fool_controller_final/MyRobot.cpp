@@ -154,51 +154,26 @@ void MyRobot::run()
     _left_wheel_motor->setVelocity(_left_speed);
     _right_wheel_motor->setVelocity(_right_speed);
 
+    // updates some attributes and gets width/height of the cameras
+    get_camera_size();
+
     while (step(_time_step) != -1)
     {
 
-        // updates some attributes and gets width/height of the cameras
-        get_camera_size();
+        // collects all data from robot sensors
+        update_robot_data();
 
-        // gets x y cordinates from GPS
-        get_gps_val();
+        // diplays all robot data from sensors to cout
+        display_robot_data();
 
-        // gets distance sensor values
-        get_dist_val();
-
-        // checks how many yellow pixels. if % > 1 and GPS_X == 9, increment cross_count
-        crossed_endline();
-
-        // updates bool endzone if GPS_X == 9
-        in_endzone();
-
-        // Dispays encoder values to cout
-        encoder_display();
-
-        // Dispays gps values to cout
-        gps_display();
-
-        // updates _theta
-        update_global_theta();
-
-        // computed odometry with tics
-        compute_odometry();
-
-        // displays odom
-        print_odometry();
-
-        // updates obstacle_detected if any walls detected
-        switch_drive();
-
-        // updates turn option randomly
-        switch_turn();
-
-        // if in endzone and less than 2 victims found, search for endzone, else if victim found navigate back to start else navigate to endzone
-        state_change();
-
-        // green_identifier();
-
-        // search_endzone();
+        if (robot_is_in_endzone() && !victims_found())
+        {
+            search_endzone();
+        }
+        else
+        {
+            navigation();
+        }
     }
 }
 
@@ -274,18 +249,6 @@ void MyRobot::angle_drive()
         { // Handles angle_diff < -5 || angle_diff > 180
             cout << "Turning right" << endl;
             right_turn_adj();
-        }
-    }
-    else
-    {
-        if (1)
-        {
-        }
-        else if (1)
-        {
-        }
-        else
-        {
         }
     }
 }
@@ -369,27 +332,7 @@ void MyRobot::stop()
     _right_speed = 0;
     set_velo();
 }
-//////////////////////////////////////////////
 
-void MyRobot::state_change()
-{
-    if (endzone && vic_count < 2)
-    {
-        search_endzone();
-        // cout << "Searching endzone. Number of victims found: " << vic_count << endl;
-    }
-    else if (vic_count >= 2)
-    {
-        target = 90.0;
-        navigation();
-        // cout << "Both victims found. Navigating back to starting point" << endl;
-    }
-    else
-    {
-        navigation();
-        // cout << "Navigating to endzone" << endl;
-    }
-}
 //////////////////////////////////////////////
 
 void MyRobot::navigation()
@@ -608,23 +551,6 @@ void MyRobot::gps_display()
     cout << "GPS Y: " << GPS_Y << endl;
 }
 
-//////////////////////////////////////
-
-void MyRobot::in_endzone()
-{
-    // crossed_endline();
-
-    if (GPS_X == 9)
-    {
-        endzone = true;
-        // cout << "In endzone" << endl;
-    }
-    else
-    {
-        endzone = false;
-        // cout << "Not in endzone" << endl;
-    }
-}
 
 //////////////////////////////////////
 
@@ -793,3 +719,51 @@ void MyRobot::switch_turn()
 }
 
 ////////////////////////////////////////
+
+void MyRobot::update_robot_data()
+{
+    // gets x y cordinates from GPS
+    get_gps_val();
+
+    // gets distance sensor values
+    get_dist_val();
+
+    // updates _theta
+    update_global_theta();
+
+    // computed odometry with tics
+    compute_odometry();
+
+    // checks how many yellow pixels. if % > 1 and GPS_X == 9, increment cross_count
+    crossed_endline();
+
+    // updates obstacle_detected if any walls detected
+    switch_drive();
+
+    // updates turn option randomly
+    switch_turn();
+}
+
+////////////////////////////////////////
+
+void MyRobot::display_robot_data()
+{
+    // print odometry
+    print_odometry();
+
+    // display encoder values
+    encoder_display();
+
+    // display GPS values
+    gps_display();
+}
+
+bool MyRobot::robot_is_in_endzone()
+{
+    return GPS_X >= 9.0;
+}
+
+bool MyRobot::victims_found()
+{
+    return vic_count == 2;
+}

@@ -131,9 +131,6 @@ private:
     //variable to track number of times the robot has crossed
     int cross_count;
     
-    //true-false ticker to begin victim search
-    bool endzone;
-    
     //true-false to be used to alter heading direction and return to beginning
     bool found_vics;
     
@@ -274,6 +271,15 @@ private:
     void update_global_theta();
     
     void navigation();
+
+    void update_robot_data();
+
+    void display_robot_data();
+
+    bool robot_is_in_endzone();
+
+    bool victims_found();
+
 };
 #endif
 
