@@ -204,7 +204,7 @@ void MyRobot::navigation()
 
 void MyRobot::angle_drive()
 {
-    if (front_max < 300) 
+    if (front_max < 300)
     {
         if (angle_diff >= -5.0 && angle_diff <= 5)
         {
@@ -263,88 +263,79 @@ void MyRobot::wall_follower()
     }
 
     // Basic wall following logic
-    int sens = 175;
-    int ideal_distance = 500;        // Ideal distance from the wall
-    int distance_error_margin = 400; // Margin of error for the ideal distance
-    if (front_all > 100)
+    int sensetivity = 150;
+    int ideal_distance = 600;        // Ideal distance from the wall
+    int distance_error_margin = 300; // Margin of error for the ideal distance
+    int side_F = 0, side_B = 0, side = 0;
+    if (front > 100)
+    {
+        cout << (direction == LEFT ? "L " : "R ") << "[WALL FOLLOWER] : Front obstacle, turning " << (direction == LEFT ? "left\n" : "right\n");
+        (direction == LEFT ? left_turn() : right_turn());
+    }
+    else
     {
         if (direction == LEFT)
         {
-            cout << "L ";
-            cout << "[WALL FOLLOWER] : Front obstacle, turning left\n";
-            left_turn();
+            cout << "L [WALL FOLLOWER] : " << side_F_R << '|' << side_B_R;
+            side_F = side_F_R;
+            side_B = side_B_R;
+            side = side_R;
         }
         else
         {
-            cout << "R ";
-            cout << "[WALL FOLLOWER] : Front obstacle, turning right\n";
-            right_turn();
+            cout << "R [WALL FOLLOWER] : " << side_F_L << '|' << side_B_L;
+            side_F = side_F_L;
+            side_B = side_B_L;
+            side = side_L;
         }
-    }
-    else if (direction == LEFT)
-    {
-        cout << "L ";
-        if (side_F_R > side_B_R + sens)
+        if (side_F > side_B + sensetivity)
         {
-            cout << "[WALL FOLLOWER] : " << side_F_R << '|' << side_B_R << " Front much closer than back, turning left to adjust\n";
-            left_turn_slow_adj();
+            cout << " Front bigger then back. Turning " << (direction == LEFT ? "left.\n" : "right.\n");
+            direction == LEFT ? left_turn_slow_adj() : right_turn_slow_adj();
         }
-        else if (side_B_R > side_F_R + sens)
+        else if (side_B > side_F + sensetivity)
         {
-            cout << "[WALL FOLLOWER] : " << side_F_R << '|' << side_B_R << " Back much closer than front, turning right to adjust\n";
-            right_turn_slow_adj();
+            cout << " Back bigger then front. Turning " << (direction == LEFT ? "right.\n" : "left.\n");
+            direction == LEFT ? right_turn_slow_adj() : left_turn_slow_adj();
         }
-        else if (side_R < ideal_distance - distance_error_margin)
+        else if(side == 0)
         {
-            cout << "[WALL FOLLOWER] : Too far from the wall, moving closer\n";
-            right_turn_slow_adj(); // Move closer to the wall
-        }
-        else if (side_R > ideal_distance + distance_error_margin)
-        {
-            cout << "[WALL FOLLOWER] : Too close to the wall, moving away\n";
-            left_turn_slow_adj(); // Move away from the wall
+            cout << " No wall detected. Turning " << (direction == LEFT ? "right.\n" : "left.\n");
+            direction == LEFT ? (_left_speed = 4, _right_speed = 1) : (_left_speed = 1, _right_speed = 4);
         }
         else
         {
-            cout << "[WALL FOLLOWER] : " << side_F_R << '|' << side_B_R << " Side sensors are balanced, moving forward\n";
-            forward_slow();
-        }
-    }
-    else if (direction == RIGHT)
-    {
-        cout << "R ";
-        if (side_F_L > side_B_L + sens)
-        {
-            cout << "[WALL FOLLOWER] : " << side_F_L << '|' << side_B_L << " Front much closer than back, turning right to adjust\n";
-            right_turn_slow_adj();
-        }
-        else if (side_B_L > side_F_L + sens)
-        {
-            cout << "[WALL FOLLOWER] : " << side_F_L << '|' << side_B_L << " Back much closer than front, turning left to adjust\n";
-            left_turn_slow_adj();
-        }
-        else if (side_L < ideal_distance - distance_error_margin)
-        {
-            cout << "[WALL FOLLOWER] : Too far from the wall, moving closer\n";
-            left_turn_slow_adj(); // Move closer to the wall
-        }
-        else if (side_L > ideal_distance + distance_error_margin)
-        {
-            cout << "[WALL FOLLOWER] : Too close to the wall, moving away\n";
-            right_turn_slow_adj(); // Move away from the wall
-        }
-        else
-        {
-            cout << "[WALL FOLLOWER] : " << side_F_L << '|' << side_B_L << " Side sensors are balanced, moving forward\n";
-            forward_slow();
+            cout << " Maintaining distance. ";
+            maintain_distance(side, ideal_distance, distance_error_margin, direction);
         }
     }
 
     // Check if the robot can stop wall following and go north
-    if ((angle_diff >= -10.0 && angle_diff <= 10) && !front)
+    if ((angle_diff >= -10.0 && angle_diff <= 10) && !front && !side)
     {
         avoiding_obstacle = false;
         cout << "[WALL FOLLOWER] : Able to go north, switching to angle drive\n";
+    }
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::maintain_distance(int side, int ideal_distance, int margin, Direction dir)
+{
+    if (side < ideal_distance - margin)
+    {
+        cout << "Too far from the wall. Turning towards.\n";
+        (dir == LEFT ? right_turn_slow_adj() : left_turn_slow_adj());
+    }
+    else if (side > ideal_distance + margin)
+    {
+        cout << "Too close to the wall. Turning away.\n";
+        (dir == LEFT ? left_turn_slow_adj() : right_turn_slow_adj());
+    }
+    else
+    {
+        cout << "Moving Forward.\n";
+        forward_slow();
     }
 }
 
@@ -571,8 +562,8 @@ void MyRobot::right_turn_slow()
 
 void MyRobot::right_turn_slow_adj()
 {
-    _left_speed = 2.5;
-    _right_speed = -1.5;
+    _left_speed = 5;
+    _right_speed = 4;
 }
 
 void MyRobot::right_turn()
@@ -597,8 +588,8 @@ void MyRobot::left_turn_slow()
 
 void MyRobot::left_turn_slow_adj()
 {
-    _left_speed = -1.5;
-    _right_speed = 2.5;
+    _left_speed = 4;
+    _right_speed = 5;
 }
 
 //////////////////////////////////////////////

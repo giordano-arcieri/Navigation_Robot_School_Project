@@ -125,7 +125,7 @@ private:
 
     float angle_diff;
 
-    //true-false to switch between wall following strategies
+    // true-false to switch between wall following strategies
     bool turn_option;
 
     int delay_counter;
@@ -206,6 +206,8 @@ private:
 
     void wall_follower();
 
+    void maintain_distance(int side, int ideal_distance, int margin, Direction dir);
+
     void get_dist_val();
 
     void get_gps_val();
@@ -252,7 +254,6 @@ private:
     void print_found();
     bool should_turn(Direction dir);
 
-
     // Drives the robot toward a green obstacle if unique in frame
     void green_drive();
 
@@ -273,6 +274,5 @@ private:
     void switch_turn();
 
     Navigation_Status navigation_status;
-
 };
 #endif
