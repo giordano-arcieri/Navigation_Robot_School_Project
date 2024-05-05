@@ -501,7 +501,7 @@ double MyRobot::convert_bearing_to_degrees()
 {
     const double *in_vector = _my_compass->getValues();
 
-    double rad = atan2(in_vector[0], in_vector[2]);
+    double rad = atan2(in_vector[2], in_vector[0]);
     double deg = rad * (180.0 / M_PI);
 
     return deg;
