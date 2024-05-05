@@ -364,6 +364,28 @@ void MyRobot::compute_odometry()
 
     _sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue());
     _sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue());
+
+    //++++++++++ new approach to distance and odometry
+   float b = WHEELS_DISTANCE;
+   float current_sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue());
+   float current_sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue());
+
+   float dif_sl = current_sl - _sl;
+   float dif_sr = current_sr - _sr;
+   
+   // Calculate the average distance traveled since the last update
+   float distance_traveled = (dif_sl + dif_sr) / 2;
+   total_distance += distance_traveled;
+   
+   // Update the robot's position and orientation using the correct difference values
+   calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(_theta + ((dif_sr - dif_sl) / (2 * b))));
+   calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(_theta + ((dif_sr - dif_sl) / (2 * b))));
+   calc_theta = calc_theta + ((dif_sr - dif_sl) / b);
+
+   // Update stored wheel distances for the next iteration
+   _sl = current_sl;
+   _sr = current_sr;
+//+++++++++++++++
 }
 
 //////////////////////////////////////
