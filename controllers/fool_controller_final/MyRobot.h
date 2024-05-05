@@ -33,15 +33,16 @@ using namespace webots;
 #define GREEN_BUFFER 10
 #define FOUND_BODY_THRESHOLD 80
 #define MAX_SPEED 7
-#define MED_SPEED 3
-#define SLOW_SPEED 0.5
+#define MED_SPEED 2
+#define SLOW_SPEED 1
 #define VICTIM_NUMBER 2
 
 #define WHEELS_DISTANCE 0.32 //[=] meters
 #define WHEEL_RADIUS 0.0825  //[=] meters
 
 #define ENCODER_TICS_PER_RADIAN 1
-#define NUM_DISTANCE_SENSOR 10
+#define FRONT_BACK_DIFF_TRESHOLD 10
+#define SIDE_DISTANCE_SENSOR_TRESHOLD 100
 #define NUMBER_OF_SENSORS 16
 
 enum Sensors
@@ -109,8 +110,12 @@ private:
     double side_F_R;
     double side_B_L;
     double side_B_R;
+    double side_L;
+    double side_R;
 
     double front_M_L;
+    double front_all;
+    double front_max;
     double front_E_L;
     double edge_L;
 
@@ -177,11 +182,21 @@ private:
 
     void left_turn();
 
+    void right_turn_slow();
+
+    void right_turn_slow_adj();
+
+    void left_turn_slow();
+
+    void left_turn_slow_adj();
+
     void right_turn_adj();
 
     void left_turn_adj();
 
     void forward();
+
+    void forward_slow();
 
     void back();
 
@@ -235,6 +250,8 @@ private:
     void search_endzone();
 
     void print_found();
+    bool should_turn(Direction dir);
+
 
     // Drives the robot toward a green obstacle if unique in frame
     void green_drive();
