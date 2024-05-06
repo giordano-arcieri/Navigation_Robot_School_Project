@@ -20,7 +20,7 @@ MyRobot::MyRobot() : Robot()
     _left_speed = 0;
     _right_speed = 0;
 
-    target = 180.0;
+    target = -90;
 
     calc_x = calc_y = calc_theta = 0.0; // robot pose variables
     _sr = _sl = 0.0;                    // displacement right and left wheels
@@ -180,8 +180,6 @@ void MyRobot::display_robot_data()
 
     // display GPS values
     gps_display();
-
-    cout << "Target: " << target << endl;
 
     cout << "Target: " << target << endl;
 
@@ -369,7 +367,7 @@ void MyRobot::search_endzone()
     else if (vic_count == 1)
     {
 
-        double vic_heading_diff = _theta - vic_heading;
+        double vic_heading_diff = _theta_OR1 - vic_heading;
         cout << "Victim heading: " << vic_heading << " Victim heading difference: " << vic_heading_diff << endl;
         if (vic_heading_diff <= 65 && vic_heading_diff >= -25)
         {
@@ -468,8 +466,8 @@ void MyRobot::compute_odometry()
     float dif_sr = current_sr - _sr;
 
     // Update the robot's position and orientation using the correct difference values
-    calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(_theta_endzone + ((dif_sr - dif_sl) / (2 * b))));
-    calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(_theta_endzone + ((dif_sr - dif_sl) / (2 * b))));
+    calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(_radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
+    calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(_radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
 
     // Update stored wheel distances for the next iteration
     _sl = current_sl;
@@ -516,12 +514,12 @@ void MyRobot::get_gps_val()
 
 void MyRobot::update_global_theta()
 {
-    radians = calculate_radians();
-    _theta = convert_bearing_to_degrees(radians);
-    angle_diff_endzone = target - _theta_endzone;
-    _theta_endzone = convert_bearing_to_degrees_enzone();
-    angle_diff_endzone = target - _theta_endzone;
-    angle_diff = target - _theta;
+    radians_OR1 = calculate_radians_OR1();
+    radians_OR2 = calculate_radians_OR2();
+    _theta_OR1 = convert_bearing_to_degrees(radians_OR1);
+    _theta_OR2 = convert_bearing_to_degrees(radians_OR2);
+    angle_diff_endzone = target - _theta_OR2;
+    angle_diff = target - _theta_OR2;
 }
 
 //////////////////////////////////////
@@ -626,20 +624,11 @@ double MyRobot::calculate_radians_OR2()
 
 //////////////////////////////////////
 
-double MyRobot::convert_bearing_to_degrees_OR1(float radian_in_1)
+double MyRobot::convert_bearing_to_degrees(float radians)
 {
-    double deg = radian_in * (180.0 / M_PI);
+    double deg = radians * (180.0 / M_PI);
 
     return deg;
-}
-
-//////////////////////////////////////
-
-double MyRobot::convert_bearing_to_degrees_OR2(float radian_in_2)
-{
-    double deg_alt = radian_in * (180.0 / M_PI);
-
-    return deg_alt;
 }
 
 //////////////////////////////////////
