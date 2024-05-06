@@ -45,6 +45,7 @@ using namespace webots;
 #define BLUE_THRESHOLD 50
 
 
+
 #define WHEELS_DISTANCE 0.3606 //[=] meters
 #define WHEEL_RADIUS 0.0825  //[=] meters
 
@@ -106,7 +107,10 @@ private:
     float GPS_X, GPS_Y;
     float _theta; // [=] degrees
     float radians_OR1;
-    float radians_OR2
+    float radians_OR2;
+    float _theta_OR1;
+    float _theta_OR2;
+    
     // target angle (initialized as 90 degrees in run function)
     float target;
     int vic_heading;
@@ -167,11 +171,7 @@ private:
     // Motor Position Sensor
     PositionSensor *_left_wheel_sensor;
     PositionSensor *_right_wheel_sensor;
-
-    double convert_bearing_to_degrees_OR1(float radian_in_1);
-    double convert_bearing_to_degrees_OR2(float radian_in_2);
     
-
     // Distance sensor
     DistanceSensor *_distance_sensor[NUMBER_OF_SENSORS];
 
@@ -191,8 +191,6 @@ private:
      * @brief Computes orientation of the robot in degrees based on the information from the compass         *
      * @return orientation of the robot in degrees
      */
-    double convert_bearing_to_degrees();
-    // double convert_bearing_to_degrees();
     /**
      * @brief Prints in the standard output the x,y,theta coordinates of the robot.
      * This method uses the encoder resolution and the wheel radius defined in the model of the robot.
@@ -263,12 +261,6 @@ private:
     void blue_identifier();
     void normalize_angle(int angle);
 
-    void right_turn_ninety(double target_heading);
-
-    double target_angle_90(double angle_i);
-
-    // double storeval_ninetyR();
-
     void turn_flush_right();
 
     void turn_flush_left();
@@ -284,6 +276,7 @@ private:
     void search_endzone();
 
     void print_found();
+   
     bool should_turn(Direction dir);
 
     // Drives the robot toward a green obstacle if unique in frame
@@ -308,6 +301,8 @@ private:
     double calculate_radians_OR1();
     
     double calculate_radians_OR2();
+    
+    double convert_bearing_to_degrees(float radians);
 
     Navigation_Status navigation_status;
 };
