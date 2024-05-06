@@ -27,17 +27,26 @@
 using namespace std;
 using namespace webots;
 
-#define GREEN_THRESHOLD 50
-#define YELLOW_THRESHOLD 110
+#define GREEN_THRESHOLD_UPP 255
+#define GREEN_THRESHOLD_LOW 180
+#define BLUE_THRESHOLD_UPP 180
+#define BLUE_THRESHOLD_LOW 0
+#define RED_THRESHOLD_UPP 180
+#define RED_THRESHOLD_LOW 0
+
+
 #define BODY_THRESHOLD 5
-#define GREEN_BUFFER 10
+#define GREEN_BUFFER 1
 #define FOUND_BODY_THRESHOLD 80
 #define MAX_SPEED 7
 #define MED_SPEED 2
 #define SLOW_SPEED 1
 #define VICTIM_NUMBER 2
+#define BLUE_THRESHOLD 50
 
-#define WHEELS_DISTANCE 0.32 //[=] meters
+
+
+#define WHEELS_DISTANCE 0.3606 //[=] meters
 #define WHEEL_RADIUS 0.0825  //[=] meters
 
 #define ENCODER_TICS_PER_RADIAN 1
@@ -96,10 +105,29 @@ private:
     float _sr, _sl;                   // [=] meters
 
     float GPS_X, GPS_Y;
-    float _theta, _theta_goal; // [=] rad
-
+    float _theta; // [=] degrees
+    float radians_OR1;
+    float radians_OR2
     // target angle (initialized as 90 degrees in run function)
     float target;
+    int vic_heading;
+    int total_distance;
+    double angle_diff_endzone;
+    double _theta_endzone;
+
+    unsigned char green_L;
+    unsigned char green_R;
+    unsigned char green_B;
+    unsigned char red_L;
+    unsigned char red_R;
+    unsigned char red_B;
+    unsigned char blue_L;
+    unsigned char blue_R;
+    unsigned char blue_B;
+
+    double percentage_green_L;
+    double percentage_green_R;
+    double percentage_blue;
 
     // distance sensor readings
     double front_L;
@@ -141,6 +169,9 @@ private:
     PositionSensor *_left_wheel_sensor;
     PositionSensor *_right_wheel_sensor;
 
+    double convert_bearing_to_degrees_OR1(float radian_in_1);
+    double convert_bearing_to_degrees_OR2(float radian_in_2);
+    
     // Distance sensor
     DistanceSensor *_distance_sensor[NUMBER_OF_SENSORS];
 
@@ -229,6 +260,7 @@ private:
     Direction turn_direction();
     Direction direction;
 
+    void blue_identifier();
     void normalize_angle(int angle);
 
     void right_turn_ninety(double target_heading);
@@ -272,6 +304,10 @@ private:
     bool victims_found();
 
     void switch_turn();
+    
+    double calculate_radians_OR1();
+    
+    double calculate_radians_OR2();
 
     Navigation_Status navigation_status;
 };
