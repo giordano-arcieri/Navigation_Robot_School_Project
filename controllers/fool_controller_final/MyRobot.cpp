@@ -276,14 +276,14 @@ void MyRobot::wall_follower()
     {
         if (direction == LEFT)
         {
-            cout << "L [WALL FOLLOWER] : " << side_F_R << '|' << side_B_R;
+            cout << "L [WALL FOLLOWER] : " << side_F_R << '|' << side_B_R << '|' << angle_diff << '|' << (abs(angle_diff) <= 100 && abs(angle_diff) >= 80);
             side_F = side_F_R;
             side_B = side_B_R;
             side = side_R;
         }
         else
         {
-            cout << "R [WALL FOLLOWER] : " << side_F_L << '|' << side_B_L;
+            cout << "R [WALL FOLLOWER] : " << side_F_L << '|' << side_B_L << '|' << angle_diff << '|' << (abs(angle_diff) <= 100 && abs(angle_diff) >= 80);
             side_F = side_F_L;
             side_B = side_B_L;
             side = side_L;
@@ -296,12 +296,19 @@ void MyRobot::wall_follower()
         else if (side_B > side_F + sensetivity)
         {
             cout << " Back bigger then front. Turning " << (direction == LEFT ? "right.\n" : "left.\n");
-            direction == LEFT ? right_turn_slow_adj() : left_turn_slow_adj();
+            if (side_F == 0)
+            {
+                direction == LEFT ? (_left_speed = 6, _right_speed = 1) : (_left_speed = 1, _right_speed = 6);
+            }
+            else
+            {
+                direction == LEFT ? right_turn_slow_adj() : left_turn_slow_adj();
+            }
         }
-        else if(side == 0)
+        else if (side == 0)
         {
             cout << " No wall detected. Turning " << (direction == LEFT ? "right.\n" : "left.\n");
-            direction == LEFT ? (_left_speed = 4, _right_speed = 1) : (_left_speed = 1, _right_speed = 4);
+            direction == LEFT ? (_left_speed = 5, _right_speed = 2) : (_left_speed = 2, _right_speed = 5);
         }
         else
         {
@@ -311,7 +318,7 @@ void MyRobot::wall_follower()
     }
 
     // Check if the robot can stop wall following and go north
-    if ((angle_diff >= -10.0 && angle_diff <= 10) && !front && !side)
+    if ((abs(angle_diff) <= 20) && !front && !side_F)
     {
         avoiding_obstacle = false;
         cout << "[WALL FOLLOWER] : Able to go north, switching to angle drive\n";
