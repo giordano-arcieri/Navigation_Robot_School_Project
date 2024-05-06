@@ -130,7 +130,6 @@ void MyRobot::run()
         display_robot_data();
 
         cout << "[DRIVERS] : \n";
-
         if (robot_is_in_endzone() && !victims_found())
         {
             cout << "[MAIN] : Searching Endzone ... \n";
@@ -182,7 +181,11 @@ void MyRobot::display_robot_data()
     // display GPS values
     gps_display();
 
+    cout << "Target: " << target << endl;
+
     compass_display();
+
+    cout << "Victim count: " << vic_count << endl;
 }
 
 ///////////////// NAVIGATION /////////////////////////////
@@ -276,14 +279,14 @@ void MyRobot::wall_follower()
     {
         if (direction == LEFT)
         {
-            cout << "L [WALL FOLLOWER] : " << side_F_R << '|' << side_B_R << '|' << angle_diff << '|' << (abs(angle_diff) <= 100 && abs(angle_diff) >= 80);
+            cout << "L [WALL FOLLOWER] : " << side_F_R << '|' << side_B_R;
             side_F = side_F_R;
             side_B = side_B_R;
             side = side_R;
         }
         else
         {
-            cout << "R [WALL FOLLOWER] : " << side_F_L << '|' << side_B_L << '|' << angle_diff << '|' << (abs(angle_diff) <= 100 && abs(angle_diff) >= 80);
+            cout << "R [WALL FOLLOWER] : " << side_F_L << '|' << side_B_L;
             side_F = side_F_L;
             side_B = side_B_L;
             side = side_L;
@@ -351,8 +354,39 @@ void MyRobot::maintain_distance(int side, int ideal_distance, int margin, Direct
 void MyRobot::search_endzone()
 {
     cout << "[SEARCH] : Searching Endzone" << endl;
-    vic_count = 2;
-    target = 90;
+    green_identifier();
+
+    // no person has been found
+    if (vic_count == 0)
+    {
+        green_drive();
+        cout << "Victim count is zero; green drive" << endl;
+    }
+
+    // one person has been found
+    else if (vic_count == 1)
+    {
+
+        double vic_heading_diff = _theta_endzone - vic_heading;
+        cout << "Victim heading: " << vic_heading << " Victim heading difference: " << vic_heading_diff << endl;
+        if (vic_heading_diff <= 50 && vic_heading_diff >= -50)
+        {
+            cout << "Turning away from first person. Heading difference is: " << vic_heading_diff << endl;
+            right_turn();
+        }
+        else
+        {
+            cout << "Found second person. Driving towards it." << endl;
+            green_drive();
+        }
+    }
+    // both people have been found
+    // end search
+    else if (vic_count == 2)
+    {
+        target = 90;
+        stop();
+    }
 }
 
 //////////////////////// END ////////////////////////////////////////
@@ -361,16 +395,39 @@ void MyRobot::search_endzone()
 
 void MyRobot::compute_odometry()
 {
-    float b = WHEELS_DISTANCE;
-    float dif_sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue()) - _sl;
-    float dif_sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue()) - _sr;
+    //++++++++++ old code for odometry +++++++++++++
+    // float b = WHEELS_DISTANCE;
+    // float dif_sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue()) - _sl;
+    // float dif_sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue()) - _sr;
 
+    // calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(_theta + ((dif_sr - dif_sl) / (2 * b))));
+    // calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(_theta + ((dif_sr - dif_sl) / (2 * b))));
+    // calc_theta = calc_theta + ((dif_sr - dif_sl) / b);
+
+    //_sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue());
+    //_sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue());
+    //++++++++++++++++ end old code ++++++++++++++++++++++++++++++++
+    //++++++++++ new approach to distance and odometry +++++++++++++
+    float b = WHEELS_DISTANCE;
+    float current_sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue());
+    float current_sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue());
+
+    float dif_sl = current_sl - _sl;
+    float dif_sr = current_sr - _sr;
+
+    // Calculate the average distance traveled since the last update
+    float distance_traveled = (dif_sl + dif_sr) / 2;
+    total_distance += distance_traveled;
+
+    // Update the robot's position and orientation using the correct difference values
     calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(_theta + ((dif_sr - dif_sl) / (2 * b))));
     calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(_theta + ((dif_sr - dif_sl) / (2 * b))));
     calc_theta = calc_theta + ((dif_sr - dif_sl) / b);
 
-    _sl = encoder_tics_to_meters(this->_left_wheel_sensor->getValue());
-    _sr = encoder_tics_to_meters(this->_right_wheel_sensor->getValue());
+    // Update stored wheel distances for the next iteration
+    _sl = current_sl;
+    _sr = current_sr;
+    //++++++++++++++ new approach to distance and odometry +++++++++++
 }
 
 //////////////////////////////////////
@@ -413,6 +470,8 @@ void MyRobot::get_gps_val()
 void MyRobot::update_global_theta()
 {
     _theta = convert_bearing_to_degrees();
+    _theta_endzone = convert_bearing_to_degrees_enzone();
+    angle_diff_endzone = target - _theta_endzone;
     angle_diff = target - _theta;
 }
 
@@ -437,7 +496,8 @@ void MyRobot::get_camera_size()
 
 void MyRobot::print_odometry()
 {
-    cout << "Odom : ( x:" << calc_x << " y:" << calc_y << " theta: " << calc_theta << " )" << endl;
+    cout << "Odom : ( x:" << calc_x << " y:" << calc_y << " theta: " << calc_theta << " )"
+         << " Total distance: " << total_distance << " )" << endl;
 }
 
 //////////////////////////////////////
@@ -499,7 +559,21 @@ double MyRobot::convert_bearing_to_degrees()
 {
     const double *in_vector = _my_compass->getValues();
 
+    //*** IMPORTANT *** The change to in_vector [2],[0] will completely reverse the compass
     double rad = atan2(in_vector[0], in_vector[2]);
+    double deg = rad * (180.0 / M_PI);
+
+    return deg;
+}
+
+//////////////////////////////////////
+
+double MyRobot::convert_bearing_to_degrees_enzone()
+{
+    const double *in_vector = _my_compass->getValues();
+
+    //*** IMPORTANT *** The change to in_vector [2],[0] will completely reverse the compass
+    double rad = atan2(in_vector[2], in_vector[0]);
     double deg = rad * (180.0 / M_PI);
 
     return deg;
@@ -538,6 +612,10 @@ bool MyRobot::robot_is_in_endzone()
 
 bool MyRobot::victims_found()
 {
+    if (vic_count == 2)
+    {
+        target = 90;
+    }
     return vic_count == 2;
 }
 
@@ -637,6 +715,94 @@ void MyRobot::stop()
     _right_speed = 0;
 }
 
+//////////////////////////////////////////////
+
+void MyRobot::green_identifier()
+{
+    int green_count_L = 0;
+    int green_count_R = 0;
+
+    // get current image from forward camera
+    const unsigned char *image_f = _forward_camera->getImage();
+
+    // count number of pixels that are green on the left half of the camera
+    // (here assumed to have pixel value > 245 out of 255 for all color components)
+    for (int x = 0; x < image_width_f / 2; x++)
+    {
+        for (int y = 0; y < image_height_f; y++)
+        {
+            green_L = _forward_camera->imageGetGreen(image_f, image_width_f, x, y);
+            red_L = _forward_camera->imageGetRed(image_f, image_width_f, x, y);
+            blue_L = _forward_camera->imageGetBlue(image_f, image_width_f, x, y);
+
+            if ((green_L > GREEN_THRESHOLD) && (red_L < GREEN_THRESHOLD) && (blue_L < GREEN_THRESHOLD))
+            {
+                green_count_L = green_count_L + 1;
+            }
+        }
+    }
+
+    // count number of pixels that are green on the right half of the camera
+    // (here assumed to have pixel value > 245 out of 255 for all color components)
+    for (int a = image_width_f / 2; a < image_width_f; a++)
+    {
+        for (int b = 0; b < image_height_f; b++)
+        {
+            green_R = _forward_camera->imageGetGreen(image_f, image_width_f, a, b);
+            red_R = _forward_camera->imageGetRed(image_f, image_width_f, a, b);
+            blue_R = _forward_camera->imageGetBlue(image_f, image_width_f, a, b);
+
+            if ((green_R > GREEN_THRESHOLD) && (red_R < GREEN_THRESHOLD) && (blue_R < GREEN_THRESHOLD))
+            {
+                green_count_R = green_count_R + 1;
+            }
+        }
+    }
+
+    // cout << "Number of green pixels on left half of camera: " << green_count_L << endl;
+    // cout << "Number of green pixels on right half of camera: " << green_count_R << endl;
+
+    percentage_green_L = (green_count_L / (float)((image_width_f / 2) * image_height_f)) * 100;
+    // cout << "Percentage of green pixels in left half of camera: " << percentage_green_L << endl;
+
+    percentage_green_R = (green_count_R / (float)((image_width_f / 2) * image_height_f)) * 100;
+    // cout << "Percentage of green pixels in right half of camera: " << percentage_green_R << endl;
+    cout << "Percentage green left: " << percentage_green_L << endl;
+    cout << "Percentage green right: " << percentage_green_R << endl;
+}
+
+//////////////////////////////////////////////
+
+void MyRobot::blue_identifier()
+{
+    int blue_count = 0;
+
+    // get current image from forward camera
+    const unsigned char *image_f = _forward_camera->getImage();
+
+    // count number of pixels that are blue on the camera
+    // (here assumed to have pixel value > 245 out of 255 for all color components)
+    for (int f = 0; f < image_width_f; f++)
+    {
+        for (int g = 0; g < image_height_f; g++)
+        {
+            green_B = _forward_camera->imageGetGreen(image_f, image_width_f, f, g);
+            red_B = _forward_camera->imageGetRed(image_f, image_width_f, f, g);
+            blue_B = _forward_camera->imageGetBlue(image_f, image_width_f, f, g);
+
+            if ((green_B > BLUE_THRESHOLD) && (red_B < BLUE_THRESHOLD) && (blue_B < BLUE_THRESHOLD))
+            {
+                blue_count = blue_count + 1;
+            }
+        }
+    }
+
+    percentage_blue = (blue_count / (float)((image_width_f / 2) * image_height_f)) * 100;
+    // cout << "Percentage of green pixels in left half of camera: " << percentage_green_L << endl;
+
+    cout << "Percentage blue: " << percentage_blue << endl;
+}
+
 //////////////////////// END ////////////////////////////////////////
 
 void MyRobot::switch_turn()
@@ -654,5 +820,50 @@ void MyRobot::switch_turn()
     {
         turn_option = false;
         // cout << "Turn option is false" << endl;
+    }
+}
+
+//////////////////////////////////////
+
+void MyRobot::green_drive()
+{
+    // if neither side of camera detects green, turn right
+    if (percentage_green_L == 0 && percentage_green_R == 0)
+    {
+        right_turn();
+        // cout << "No green; turning right" << endl;
+    }
+
+    // if both sides detect same amount of green, greater than 30 percent, stop
+    else if (percentage_green_L == 100 && percentage_green_R == 100)
+    {
+        vic_count++;
+        print_found();
+        vic_heading = _theta_endzone;
+        stop();
+    }
+
+    // if both detect same amount of green and they are less than 30 percent, forward
+    // tolerance 3 percent
+    else if (percentage_green_L < (percentage_green_R + GREEN_BUFFER) && percentage_green_L > (percentage_green_R - GREEN_BUFFER))
+    {
+        forward();
+        // cout << "Green in front; forward" << endl;
+    }
+
+    // if right side of camera detects more green than the left side, turn right
+    // tolerance 5 percent
+    else if (percentage_green_R > percentage_green_L)
+    {
+        right_turn_adj();
+        // cout << "Green on right; turning right" << endl;
+    }
+
+    // if left side of camera detects more green than the right side, turn left
+    // tolerance 5 percent
+    else if (percentage_green_R < percentage_green_L)
+    {
+        left_turn_adj();
+        // cout << "Green on left; turning left" << endl;
     }
 }

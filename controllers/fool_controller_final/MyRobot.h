@@ -36,6 +36,9 @@ using namespace webots;
 #define MED_SPEED 2
 #define SLOW_SPEED 1
 #define VICTIM_NUMBER 2
+#define BLUE_THRESHOLD 50
+
+
 
 #define WHEELS_DISTANCE 0.32 //[=] meters
 #define WHEEL_RADIUS 0.0825  //[=] meters
@@ -100,6 +103,24 @@ private:
 
     // target angle (initialized as 90 degrees in run function)
     float target;
+    int vic_heading;
+    int total_distance;
+    double angle_diff_endzone;
+    double _theta_endzone;
+
+    unsigned char green_L;
+    unsigned char green_R;
+    unsigned char green_B;
+    unsigned char red_L;
+    unsigned char red_R;
+    unsigned char red_B;
+    unsigned char blue_L;
+    unsigned char blue_R;
+    unsigned char blue_B;
+
+    double percentage_green_L;
+    double percentage_green_R;
+    double percentage_blue;
 
     // distance sensor readings
     double front_L;
@@ -140,6 +161,8 @@ private:
     // Motor Position Sensor
     PositionSensor *_left_wheel_sensor;
     PositionSensor *_right_wheel_sensor;
+
+    double convert_bearing_to_degrees_enzone();
 
     // Distance sensor
     DistanceSensor *_distance_sensor[NUMBER_OF_SENSORS];
@@ -229,6 +252,7 @@ private:
     Direction turn_direction();
     Direction direction;
 
+    void blue_identifier();
     void normalize_angle(int angle);
 
     void right_turn_ninety(double target_heading);
