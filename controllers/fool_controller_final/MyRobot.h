@@ -45,7 +45,6 @@ using namespace webots;
 #define BLUE_THRESHOLD 50
 
 
-
 #define WHEELS_DISTANCE 0.3606 //[=] meters
 #define WHEEL_RADIUS 0.0825  //[=] meters
 
@@ -172,6 +171,7 @@ private:
     double convert_bearing_to_degrees_OR1(float radian_in_1);
     double convert_bearing_to_degrees_OR2(float radian_in_2);
     
+
     // Distance sensor
     DistanceSensor *_distance_sensor[NUMBER_OF_SENSORS];
 
