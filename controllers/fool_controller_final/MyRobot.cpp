@@ -466,8 +466,8 @@ void MyRobot::compute_odometry()
     float dif_sr = current_sr - _sr;
 
     // Update the robot's position and orientation using the correct difference values
-    calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(_radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
-    calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(_radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
+    calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
+    calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
 
     // Update stored wheel distances for the next iteration
     _sl = current_sl;
@@ -815,48 +815,15 @@ void MyRobot::green_identifier()
         }
     }
 
-    // cout << "Number of green pixels on left half of camera: " << green_count_L << endl;
-    // cout << "Number of green pixels on right half of camera: " << green_count_R << endl;
+    cout << "Number of green pixels on left half of camera: " << green_count_L << endl;
+    cout << "Number of green pixels on right half of camera: " << green_count_R << endl;
 
     percentage_green_L = (green_count_L / (float)((image_width_f / 2) * image_height_f)) * 100;
-    // cout << "Percentage of green pixels in left half of camera: " << percentage_green_L << endl;
 
     percentage_green_R = (green_count_R / (float)((image_width_f / 2) * image_height_f)) * 100;
-    // cout << "Percentage of green pixels in right half of camera: " << percentage_green_R << endl;
+    
     cout << "Percentage green left: " << percentage_green_L << endl;
     cout << "Percentage green right: " << percentage_green_R << endl;
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::blue_identifier()
-{
-    int blue_count = 0;
-
-    // get current image from forward camera
-    const unsigned char *image_f = _forward_camera->getImage();
-
-    // count number of pixels that are blue on the camera
-    // (here assumed to have pixel value > 245 out of 255 for all color components)
-    for (int f = 0; f < image_width_f; f++)
-    {
-        for (int g = 0; g < image_height_f; g++)
-        {
-            green_B = _forward_camera->imageGetGreen(image_f, image_width_f, f, g);
-            red_B = _forward_camera->imageGetRed(image_f, image_width_f, f, g);
-            blue_B = _forward_camera->imageGetBlue(image_f, image_width_f, f, g);
-
-            if ((green_B > BLUE_THRESHOLD) && (red_B < BLUE_THRESHOLD) && (blue_B < BLUE_THRESHOLD))
-            {
-                blue_count = blue_count + 1;
-            }
-        }
-    }
-
-    percentage_blue = (blue_count / (float)((image_width_f / 2) * image_height_f)) * 100;
-    // cout << "Percentage of green pixels in left half of camera: " << percentage_green_L << endl;
-
-    cout << "Percentage blue: " << percentage_blue << endl;
 }
 
 //////////////////////// END ////////////////////////////////////////
