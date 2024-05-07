@@ -27,12 +27,12 @@
 using namespace std;
 using namespace webots;
 
-#define GREEN_THRESHOLD_UPP 255
-#define GREEN_THRESHOLD_LOW 180
-#define BLUE_THRESHOLD_UPP 180
-#define BLUE_THRESHOLD_LOW 0
-#define RED_THRESHOLD_UPP 180
-#define RED_THRESHOLD_LOW 0
+#define GREEN_THRESHOLD_UPP 245
+#define GREEN_THRESHOLD_LOW 90
+#define BLUE_THRESHOLD_UPP 93
+#define BLUE_THRESHOLD_LOW 70
+#define RED_THRESHOLD_UPP 140
+#define RED_THRESHOLD_LOW 20
 
 
 #define BODY_THRESHOLD 5
@@ -120,17 +120,16 @@ private:
 
     unsigned char green_L;
     unsigned char green_R;
-    unsigned char green_B;
+ 
     unsigned char red_L;
     unsigned char red_R;
-    unsigned char red_B;
+    
     unsigned char blue_L;
     unsigned char blue_R;
-    unsigned char blue_B;
 
     double percentage_green_L;
     double percentage_green_R;
-    double percentage_blue;
+
 
     // distance sensor readings
     double front_L;
