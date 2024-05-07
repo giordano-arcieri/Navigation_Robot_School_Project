@@ -3,8 +3,8 @@
  * @brief   Main logic for the fool_controller_final controller.
  *
  * @author  Blake Boyer <100531828@alumnos.uc3m.es>
- * @author  Giordano Arcieri <>
- * @date    2023-12
+ * @author  Giordano Arcieri <arcierigiordano@gmail.com>
+ * @date    May 7th, 2024
  */
 
 #include "MyRobot.h"
@@ -75,10 +75,6 @@ MyRobot::MyRobot() : Robot()
     // Forward Camera
     _forward_camera = getCamera("camera_f");
     _forward_camera->enable(_time_step);
-
-    // Spherical Camera
-    _spherical_camera = getCamera("camera_s");
-    _spherical_camera->enable(_time_step);
 }
 
 //////////////////////////////////////////////
@@ -354,7 +350,6 @@ void MyRobot::maintain_distance(int side, int ideal_distance, int margin, Direct
 void MyRobot::search_endzone()
 {
     cout << "[SEARCH] : Searching Endzone ";
-    green_identifier();
 
     // no person has been found
     if (vic_count == 0)
@@ -392,6 +387,8 @@ void MyRobot::search_endzone()
 void MyRobot::green_drive()
 {
     // if neither side of camera detects green, turn right
+    green_identifier();
+    
     if (percentage_green_L < 0.1 && percentage_green_R < 0.1)
     {
         cout << "[GREEN_DRIVE] : Turning torwrds vic \n";
@@ -438,6 +435,62 @@ void MyRobot::green_drive()
     }
 }
 
+void MyRobot::green_identifier()
+{
+    int green_count_L = 0;
+    int green_count_R = 0;
+
+    // get current image from forward camera
+    const unsigned char *image_f = _forward_camera->getImage();
+
+    // count number of pixels that are green on the left half of the camera
+    // (here assumed to have pixel value > 245 out of 255 for all color components)
+    for (int x = 0; x < image_width_f / 2; x++)
+    {
+        for (int y = 0; y < image_height_f; y++)
+        {
+            green_L = _forward_camera->imageGetGreen(image_f, image_width_f, x, y);
+            red_L = _forward_camera->imageGetRed(image_f, image_width_f, x, y);
+            blue_L = _forward_camera->imageGetBlue(image_f, image_width_f, x, y);
+            
+            if ((green_L > GREEN_THRESHOLD_LOW && green_L < GREEN_THRESHOLD_UPP) &&
+            (red_L > RED_THRESHOLD_LOW && red_L < RED_THRESHOLD_UPP) &&
+            (blue_L > BLUE_THRESHOLD_LOW && blue_L < BLUE_THRESHOLD_UPP))
+            {
+                green_count_L = green_count_L + 1;
+            }
+        }
+    }
+
+    // count number of pixels that are green on the right half of the camera
+    // (here assumed to have pixel value > 245 out of 255 for all color components)
+    for (int a = image_width_f / 2; a < image_width_f; a++)
+    {
+        for (int b = 0; b < image_height_f; b++)
+        {
+            green_R = _forward_camera->imageGetGreen(image_f, image_width_f, a, b);
+            red_R = _forward_camera->imageGetRed(image_f, image_width_f, a, b);
+            blue_R = _forward_camera->imageGetBlue(image_f, image_width_f, a, b);
+            
+            
+            if ((green_R > GREEN_THRESHOLD_LOW && green_R < GREEN_THRESHOLD_UPP) &&
+            (red_R > RED_THRESHOLD_LOW && red_R < RED_THRESHOLD_UPP) &&
+            (blue_R > BLUE_THRESHOLD_LOW && blue_R < BLUE_THRESHOLD_UPP))
+            {
+                green_count_R++;
+            }
+        }
+    }
+
+    // cout << "Number of green pixels on left half of camera: " << green_count_L << endl;
+    // cout << "Number of green pixels on right half of camera: " << green_count_R << endl;
+
+    percentage_green_L = (green_count_L / (float)((image_width_f / 2) * image_height_f)) * 100;
+
+    percentage_green_R = (green_count_R / (float)((image_width_f / 2) * image_height_f)) * 100;
+    
+    cout << "\%GL: " << percentage_green_L << "\%GR: " << percentage_green_R << endl;
+}
 
 //////////////////////// END ////////////////////////////////////////
 
@@ -466,8 +519,8 @@ void MyRobot::compute_odometry()
     float dif_sr = current_sr - _sr;
 
     // Update the robot's position and orientation using the correct difference values
-    calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(_radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
-    calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(_radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
+    calc_x = calc_x + (((dif_sr + dif_sl) / 2) * cos(radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
+    calc_y = calc_y + (((dif_sr + dif_sl) / 2) * sin(radians_OR2 + ((dif_sr - dif_sl) / (2 * b))));
 
     // Update stored wheel distances for the next iteration
     _sl = current_sl;
@@ -574,7 +627,7 @@ void MyRobot::gps_display()
 
 void MyRobot::compass_display()
 {
-    cout << "Compass: " << _theta << endl;
+    cout << "Compass: " << _theta_OR1 << '|' << _theta_OR2 << endl;
 }
 
 //////////////////////////////////////
@@ -769,114 +822,6 @@ void MyRobot::stop()
 
 //////////////////////////////////////////////
 
-void MyRobot::green_identifier()
-{
-    int green_count_L = 0;
-    int green_count_R = 0;
 
-    // get current image from forward camera
-    const unsigned char *image_f = _forward_camera->getImage();
-
-    // count number of pixels that are green on the left half of the camera
-    // (here assumed to have pixel value > 245 out of 255 for all color components)
-    for (int x = 0; x < image_width_f / 2; x++)
-    {
-        for (int y = 0; y < image_height_f; y++)
-        {
-            green_L = _forward_camera->imageGetGreen(image_f, image_width_f, x, y);
-            red_L = _forward_camera->imageGetRed(image_f, image_width_f, x, y);
-            blue_L = _forward_camera->imageGetBlue(image_f, image_width_f, x, y);
-
-            if ((green_L > GREEN_THRESHOLD_LOW && green_L < GREEN_THRESHOLD_UPP) &&
-            (red_L > RED_THRESHOLD_LOW && red_L < RED_THRESHOLD_UPP) &&
-            (blue_L > BLUE_THRESHOLD_LOW && blue_L < BLUE_THRESHOLD_UPP))
-            {
-                green_count_L = green_count_L + 1;
-            }
-        }
-    }
-
-    // count number of pixels that are green on the right half of the camera
-    // (here assumed to have pixel value > 245 out of 255 for all color components)
-    for (int a = image_width_f / 2; a < image_width_f; a++)
-    {
-        for (int b = 0; b < image_height_f; b++)
-        {
-            green_R = _forward_camera->imageGetGreen(image_f, image_width_f, a, b);
-            red_R = _forward_camera->imageGetRed(image_f, image_width_f, a, b);
-            blue_R = _forward_camera->imageGetBlue(image_f, image_width_f, a, b);
-
-            if ((green_R > GREEN_THRESHOLD_LOW && green_R < GREEN_THRESHOLD_UPP) &&
-            (red_R > RED_THRESHOLD_LOW && red_R < RED_THRESHOLD_UPP) &&
-            (blue_R > BLUE_THRESHOLD_LOW && blue_R < BLUE_THRESHOLD_UPP))
-            {
-                green_count_R = green_count_R + 1;
-            }
-        }
-    }
-
-    // cout << "Number of green pixels on left half of camera: " << green_count_L << endl;
-    // cout << "Number of green pixels on right half of camera: " << green_count_R << endl;
-
-    percentage_green_L = (green_count_L / (float)((image_width_f / 2) * image_height_f)) * 100;
-    // cout << "Percentage of green pixels in left half of camera: " << percentage_green_L << endl;
-
-    percentage_green_R = (green_count_R / (float)((image_width_f / 2) * image_height_f)) * 100;
-    // cout << "Percentage of green pixels in right half of camera: " << percentage_green_R << endl;
-    cout << "Percentage green left: " << percentage_green_L << endl;
-    cout << "Percentage green right: " << percentage_green_R << endl;
-}
-
-//////////////////////////////////////////////
-
-void MyRobot::blue_identifier()
-{
-    int blue_count = 0;
-
-    // get current image from forward camera
-    const unsigned char *image_f = _forward_camera->getImage();
-
-    // count number of pixels that are blue on the camera
-    // (here assumed to have pixel value > 245 out of 255 for all color components)
-    for (int f = 0; f < image_width_f; f++)
-    {
-        for (int g = 0; g < image_height_f; g++)
-        {
-            green_B = _forward_camera->imageGetGreen(image_f, image_width_f, f, g);
-            red_B = _forward_camera->imageGetRed(image_f, image_width_f, f, g);
-            blue_B = _forward_camera->imageGetBlue(image_f, image_width_f, f, g);
-
-            if ((green_B > BLUE_THRESHOLD) && (red_B < BLUE_THRESHOLD) && (blue_B < BLUE_THRESHOLD))
-            {
-                blue_count = blue_count + 1;
-            }
-        }
-    }
-
-    percentage_blue = (blue_count / (float)((image_width_f / 2) * image_height_f)) * 100;
-    // cout << "Percentage of green pixels in left half of camera: " << percentage_green_L << endl;
-
-    cout << "Percentage blue: " << percentage_blue << endl;
-}
 
 //////////////////////// END ////////////////////////////////////////
-
-void MyRobot::switch_turn()
-{
-    delay_counter++;
-    // cout << "Delay counter: " << delay_counter << endl;
-    // cout << "Delay calculation: " << delay_counter % 2000 << endl;
-
-    if (delay_counter % 2000 > 1000)
-    {
-        turn_option = true;
-        // cout << "Turn option is true" << endl;
-    }
-    else
-    {
-        turn_option = false;
-        // cout << "Turn option is false" << endl;
-    }
-}
-
-//////////////////////////////////////
